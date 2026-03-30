@@ -2,124 +2,83 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mobile Game</title>
-<style>
-body {
-    margin: 0;
-    overflow: hidden;
-}
-canvas {
-    background: #eee;
-    display: block;
-}
-</style>
+<title>Simple Game</title>
 </head>
 <body>
-
-<canvas id="game"></canvas>
+<canvas id="game" width="400" height="300"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// 画面サイズをスマホに合わせる
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
 // プレイヤー
 let player = {
-    x: 100,
-    y: canvas.height - 100,
+    x: 50,
+    y: 200,
     vx: 0,
     vy: 0,
-    size: 30,
+    width: 20,
+    height: 20,
     onGround: false
 };
 
-// 入力状態
-let touch = {
-    left: false,
-    right: false
-};
-
-// タッチ操作
-canvas.addEventListener("touchstart", e => {
-    handleTouch(e);
-});
-canvas.addEventListener("touchmove", e => {
-    handleTouch(e);
-});
-canvas.addEventListener("touchend", () => {
-    touch.left = false;
-    touch.right = false;
-});
-
-function handleTouch(e) {
-    e.preventDefault();
-    touch.left = false;
-    touch.right = false;
-
-    for (let t of e.touches) {
-        if (t.clientX < canvas.width / 2) {
-            touch.left = true;
-        } else {
-            touch.right = true;
-        }
-    }
-
-    // ジャンプ（どこでもOK）
-    if (player.onGround) {
-        player.vy = -12;
-        player.onGround = false;
-    }
-}
+// 入力
+let keys = {};
+document.addEventListener("keydown", e => keys[e.code] = true);
+document.addEventListener("keyup", e => keys[e.code] = false);
 
 // 定数
-const gravity = 0.6;
-const speed = 4;
+const gravity = 0.5;
+const jumpPower = -10;
+const speed = 3;
 
-// ループ
+// ゲームループ
 function loop() {
     update();
-    draw();
+    render();
     requestAnimationFrame(loop);
 }
 
-// 更新
+// 状態更新
 function update() {
-    if (touch.left) player.vx = -speed;
-    else if (touch.right) player.vx = speed;
+    // 左右移動
+    if (keys["ArrowLeft"]) player.vx = -speed;
+    else if (keys["ArrowRight"]) player.vx = speed;
     else player.vx = 0;
 
+    // ジャンプ
+    if (keys["Space"] && player.onGround) {
+        player.vy = jumpPower;
+        player.onGround = false;
+    }
+
+    // 重力
     player.vy += gravity;
 
+    // 移動
     player.x += player.vx;
     player.y += player.vy;
 
-    // 地面
-    let ground = canvas.height - 50;
-
-    if (player.y + player.size > ground) {
-        player.y = ground - player.size;
+    // 地面判定
+    if (player.y + player.height > 250) {
+        player.y = 250 - player.height;
         player.vy = 0;
         player.onGround = true;
     }
 }
 
 // 描画
-function draw() {
+function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // 地面
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+    ctx.fillRect(0, 250, 400, 50);
 
     // プレイヤー
-    ctx.fillRect(player.x, player.y, player.size, player.size);
+    ctx.fillRect(player.x, player.y, player.width, player.height);
 }
 
 loop();
 </script>
-
 </body>
 </html>
