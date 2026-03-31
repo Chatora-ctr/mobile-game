@@ -1,227 +1,606 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Card Craft Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Card Craft</title>
 <style>
-  body { margin:0; overflow:hidden; font-family:sans-serif; }
-  canvas { background:#cfe8cf; display:block; }
+  * { box-sizing: border-box; }
+  body { margin:0; overflow:hidden; font-family:'Segoe UI', sans-serif; touch-action:none; }
+  canvas { display:block; background:#7ec87e; }
 
   #ui {
     position:fixed;
     top:0; left:0;
     width:100%;
+    height:52px;
     display:flex;
+    align-items:center;
     justify-content:space-between;
-    background:#333;
+    background:rgba(30,30,30,0.92);
     color:white;
-    padding:5px;
+    padding:0 12px;
     z-index:10;
+    gap:8px;
   }
 
-  button { font-size:16px; }
+  #packBtn {
+    font-size:14px;
+    background:#4a9e4a;
+    color:white;
+    border:none;
+    border-radius:8px;
+    padding:6px 14px;
+    cursor:pointer;
+    font-weight:bold;
+    white-space:nowrap;
+  }
+  #packBtn:active { background:#3a7e3a; }
+
+  #trashZone {
+    font-size:13px;
+    color:#ffd;
+    background:rgba(200,60,60,0.5);
+    border:2px dashed #f88;
+    border-radius:8px;
+    padding:5px 14px;
+    flex:1;
+    text-align:center;
+    white-space:nowrap;
+  }
+  #trashZone.active {
+    background:rgba(200,60,60,0.9);
+    border-color:#fff;
+  }
+
+  #emeraldCount {
+    font-size:14px;
+    color:#7fffb2;
+    font-weight:bold;
+    white-space:nowrap;
+  }
+
+  #toast {
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.75);
+    color:#fff;
+    padding:8px 20px;
+    border-radius:20px;
+    font-size:14px;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity 0.3s;
+    z-index:20;
+  }
 </style>
 </head>
 <body>
 
 <div id="ui">
-  <button id="packBtn">パック開封</button>
-  <div>ゴミ箱（ここにドラッグで売却）</div>
+  <button id="packBtn">📦 パック開封</button>
+  <div id="trashZone">🗑 ここにドラッグで売却</div>
+  <div id="emeraldCount">💎 0</div>
 </div>
 
 <canvas id="game"></canvas>
+<div id="toast"></div>
 
 <script>
+// ─── Canvas Setup ───────────────────────────────────────────────────────────
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const UI_H = 52;
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
 
-let scale = 1;
-let offsetX = 0;
-let offsetY = 50;
+// ─── Camera ─────────────────────────────────────────────────────────────────
+let cam = { x:0, y:0, scale:1 };
 
+function worldToScreen(wx, wy) {
+  return {
+    x: wx * cam.scale + cam.x,
+    y: wy * cam.scale + cam.y + UI_H
+  };
+}
+function screenToWorld(sx, sy) {
+  return {
+    x: (sx - cam.x) / cam.scale,
+    y: (sy - UI_H - cam.y) / cam.scale
+  };
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
 let cards = [];
-let groups = [];
 let nextId = 1;
+let totalEmerald = 0;
+
+// グループのprogress管理（グループIDベース）
+let groupProgress = {}; // groupKey -> { recipe, progress }
+
+function groupKey(group) {
+  return group.map(c => c.id).sort((a,b) => a-b).join(",");
+}
+
+// ─── Card ────────────────────────────────────────────────────────────────────
+const CARD_W = 80;
+const CARD_H = 100;
+
+// カードの見た目設定
+const cardStyles = {
+  human:      { bg:"#e8d5b0", border:"#a0834a", icon:"👤" },
+  tree:       { bg:"#c8e8c0", border:"#4a8a4a", icon:"🌳" },
+  rock:       { bg:"#d0d0d0", border:"#707070", icon:"🪨" },
+  apple_tree: { bg:"#ffe8c0", border:"#c07030", icon:"🍎" },
+  wood:       { bg:"#d4b896", border:"#8a5a2a", icon:"🪵" },
+  stone:      { bg:"#c8c8b8", border:"#606050", icon:"🧱" },
+  emerald:    { bg:"#b0f0d0", border:"#20a060", icon:"💎" },
+};
 
 function createCard(type, x, y) {
-  cards.push({
+  const card = {
     id: nextId++,
     type,
     x, y,
-    w:80, h:100,
-    stack:1,
-    group:null,
-    crafting:false,
-    progress:0
-  });
+    w: CARD_W,
+    h: CARD_H,
+    stack: 1,
+  };
+  cards.push(card);
+  return card;
 }
 
-// 初期状態
-createCard("human", 100, 200);
-
-// パック内容
-document.getElementById("packBtn").onclick = () => {
-  createCard("tree", 200, 200);
-  createCard("rock", 300, 200);
-  createCard("apple_tree", 400, 200);
-};
-
-// レシピ
+// ─── Recipes ─────────────────────────────────────────────────────────────────
 const recipes = [
-  { inputs:{human:1, tree:1}, output:"wood", time:2000 },
-  { inputs:{human:1, rock:1}, output:"stone", time:2000 }
+  { inputs:{ human:1, tree:1 },      output:"wood",  time:5 },
+  { inputs:{ human:1, rock:1 },      output:"stone", time:3 },
+  { inputs:{ human:1, apple_tree:1 },output:"wood",  time:8 },
 ];
 
-// タッチ操作
-let dragging = null;
+const sellValues = {
+  tree:5, rock:3, apple_tree:8,
+  wood:10, stone:7, emerald:1,
+};
 
-canvas.addEventListener("touchstart", e => {
-  let t = e.touches[0];
-  let x = (t.clientX - offsetX)/scale;
-  let y = (t.clientY - offsetY)/scale;
+// ─── Initial State ────────────────────────────────────────────────────────────
+createCard("human", 120, 160);
 
-  for (let i = cards.length-1; i>=0; i--) {
-    let c = cards[i];
-    if (x>c.x && x<c.x+c.w && y>c.y && y<c.y+c.h) {
-      dragging = c;
-      break;
-    }
-  }
-});
+document.getElementById("packBtn").onclick = () => {
+  const bx = -cam.x / cam.scale + 100;
+  const by = -cam.y / cam.scale + 200;
+  createCard("tree",       bx,       by);
+  createCard("rock",       bx + 100, by);
+  createCard("apple_tree", bx + 200, by);
+  showToast("パック開封！ tree / rock / apple_tree");
+};
 
-canvas.addEventListener("touchmove", e => {
-  if (!dragging) return;
-  let t = e.touches[0];
-  dragging.x = (t.clientX - offsetX)/scale - dragging.w/2;
-  dragging.y = (t.clientY - offsetY)/scale - dragging.h/2;
-});
-
-canvas.addEventListener("touchend", e => {
-  // ゴミ箱判定
-  let t = e.changedTouches[0];
-  if (t.clientY < 50) {
-    if (dragging.type !== "human") {
-      cards = cards.filter(c => c !== dragging);
-    }
-  }
-  dragging = null;
-});
-
-// 重なり判定
-function isOverlap(a,b){
-  return !(a.x+a.w < b.x || b.x+b.w < a.x || a.y+a.h < b.y || b.y+b.h < a.y);
+// ─── Groups ──────────────────────────────────────────────────────────────────
+function isOverlap(a, b) {
+  return !(a.x + a.w < b.x || b.x + b.w < a.x ||
+           a.y + a.h < b.y || b.y + b.h < a.y);
 }
 
-// グループ構築
-function buildGroups(){
-  groups = [];
-  let visited = new Set();
-
-  for (let c of cards) {
-    if (visited.has(c)) continue;
-
-    let stack = [c];
-    let group = [];
-
-    while(stack.length){
-      let cur = stack.pop();
-      if (visited.has(cur)) continue;
-      visited.add(cur);
+function buildGroups() {
+  const visited = new Set();
+  const groups = [];
+  for (const c of cards) {
+    if (visited.has(c.id)) continue;
+    const stack = [c];
+    const group = [];
+    while (stack.length) {
+      const cur = stack.pop();
+      if (visited.has(cur.id)) continue;
+      visited.add(cur.id);
       group.push(cur);
-
-      for (let other of cards){
-        if (!visited.has(other) && isOverlap(cur, other)){
+      for (const other of cards) {
+        if (!visited.has(other.id) && isOverlap(cur, other)) {
           stack.push(other);
         }
       }
     }
-
     groups.push(group);
   }
+  return groups;
 }
 
-// レシピ判定
-function matchRecipe(group){
-  let count = {};
-  for (let c of group){
-    count[c.type] = (count[c.type]||0)+1;
-  }
-
-  for (let r of recipes){
+function matchRecipe(group) {
+  const count = {};
+  for (const c of group) count[c.type] = (count[c.type] || 0) + 1;
+  for (const r of recipes) {
     let ok = true;
-    let keys = Object.keys(r.inputs);
-
-    if (keys.length !== Object.keys(count).length) continue;
-
-    for (let k of keys){
-      if (count[k] !== r.inputs[k]) ok = false;
+    for (const key in r.inputs) {
+      if (count[key] !== r.inputs[key]) { ok = false; break; }
     }
-
+    if (ok) {
+      for (const key in count) {
+        if (r.inputs[key] === undefined) { ok = false; break; }
+      }
+    }
     if (ok) return r;
   }
   return null;
 }
 
-// 更新
-function update(dt){
-  buildGroups();
+// ─── Drag ─────────────────────────────────────────────────────────────────────
+let dragging = null;        // { card, offX, offY }
+let draggingGroup = null;   // [{ card, relX, relY }] グループ移動時
 
-  for (let g of groups){
-    let r = matchRecipe(g);
-
-    if (r){
-      g.progress = (g.progress||0)+dt;
-
-      if (g.progress >= r.time){
-        // 完成
-        let base = g[0];
-        cards = cards.filter(c => !g.includes(c));
-
-        createCard(r.output, base.x+20, base.y+20);
-      }
-    } else {
-      g.progress = 0;
-    }
+function cardAt(wx, wy) {
+  for (let i = cards.length - 1; i >= 0; i--) {
+    const c = cards[i];
+    if (wx > c.x && wx < c.x + c.w && wy > c.y && wy < c.y + c.h) return c;
   }
+  return null;
 }
 
-// 描画
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+// グループの「一番下（最背面）カード」を取得
+function bottomCardOf(group) {
+  // cards配列の先頭寄りのほうが背面
+  let bottomIdx = Infinity;
+  let bottom = null;
+  for (const c of group) {
+    const idx = cards.indexOf(c);
+    if (idx < bottomIdx) { bottomIdx = idx; bottom = c; }
+  }
+  return bottom;
+}
 
+// ─── Pinch Zoom ───────────────────────────────────────────────────────────────
+let pinchDist0 = null;
+let pinchScale0 = null;
+let pinchMid0 = null;
+let panStart = null;   // 1本指パン開始
+
+function getTouchMid(touches) {
+  const t0 = touches[0], t1 = touches[1];
+  return { x: (t0.clientX + t1.clientX) / 2, y: (t0.clientY + t1.clientY) / 2 };
+}
+function getTouchDist(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  if (e.touches.length === 2) {
+    // ピンチ開始
+    dragging = null;
+    draggingGroup = null;
+    pinchDist0 = getTouchDist(e.touches);
+    pinchScale0 = cam.scale;
+    pinchMid0 = getTouchMid(e.touches);
+    return;
+  }
+
+  const t = e.touches[0];
+  if (t.clientY < UI_H) return;
+
+  const w = screenToWorld(t.clientX, t.clientY);
+  const hit = cardAt(w.x, w.y);
+
+  if (!hit) {
+    // 空白パン開始
+    panStart = { tx: t.clientX, ty: t.clientY, cx: cam.x, cy: cam.y };
+    return;
+  }
+
+  // グループを調べる
+  const groups = buildGroups();
+  const group = groups.find(g => g.some(c => c === hit));
+
+  if (group && group.length > 1) {
+    const bottom = bottomCardOf(group);
+    if (hit === bottom) {
+      // グループ移動モード
+      draggingGroup = group.map(c => ({ card: c, relX: c.x - hit.x, relY: c.y - hit.y }));
+      dragging = { card: hit, offX: w.x - hit.x, offY: w.y - hit.y };
+      // 全グループを最前面へ
+      cards = cards.filter(c => !group.includes(c));
+      cards.push(...group);
+      return;
+    }
+  }
+
+  // 単体ドラッグ
+  dragging = { card: hit, offX: w.x - hit.x, offY: w.y - hit.y };
+  cards = cards.filter(c => c !== hit);
+  cards.push(hit);
+}, { passive: false });
+
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  if (e.touches.length === 2 && pinchDist0 !== null) {
+    const dist = getTouchDist(e.touches);
+    const mid = getTouchMid(e.touches);
+    const ratio = dist / pinchDist0;
+    const newScale = Math.max(0.3, Math.min(3, pinchScale0 * ratio));
+
+    // ズーム：ミッドポイントを基準
+    const wx = (pinchMid0.x - cam.x) / cam.scale;
+    const wy = (pinchMid0.y - UI_H - cam.y) / cam.scale;
+    cam.scale = newScale;
+    cam.x = pinchMid0.x - wx * newScale;
+    cam.y = pinchMid0.y - UI_H - wy * newScale;
+
+    // パン（ミッドが動いた分）
+    cam.x += mid.x - pinchMid0.x;
+    cam.y += mid.y - pinchMid0.y;
+    pinchMid0 = mid;
+    return;
+  }
+
+  const t = e.touches[0];
+  if (t.clientY < UI_H) return;
+  const w = screenToWorld(t.clientX, t.clientY);
+
+  if (dragging) {
+    const newX = w.x - dragging.offX;
+    const newY = w.y - dragging.offY;
+
+    if (draggingGroup) {
+      // グループ全体移動
+      const dx = newX - dragging.card.x;
+      const dy = newY - dragging.card.y;
+      for (const { card, relX, relY } of draggingGroup) {
+        card.x = dragging.card.x + dx + relX;
+        card.y = dragging.card.y + dy + relY;
+        clampCard(card);
+      }
+      dragging.card.x = newX;
+      dragging.card.y = newY;
+      clampCard(dragging.card);
+    } else {
+      dragging.card.x = newX;
+      dragging.card.y = newY;
+      clampCard(dragging.card);
+    }
+    return;
+  }
+
+  if (panStart) {
+    cam.x = panStart.cx + (t.clientX - panStart.tx);
+    cam.y = panStart.cy + (t.clientY - panStart.ty);
+  }
+}, { passive: false });
+
+canvas.addEventListener("touchend", e => {
+  e.preventDefault();
+  pinchDist0 = null;
+  panStart = null;
+
+  if (!dragging) return;
+
+  const t = e.changedTouches[0];
+
+  // ゴミ箱判定（画面上部UI内）
+  if (t.clientY < UI_H && dragging.card.type !== "human") {
+    const val = sellValues[dragging.card.type] || 1;
+    const cx = dragging.card.x, cy = dragging.card.y;
+
+    if (draggingGroup) {
+      // グループごと売却（humanは除く）
+      const toSell = draggingGroup.map(d => d.card).filter(c => c.type !== "human");
+      const totalVal = toSell.reduce((s, c) => s + (sellValues[c.type] || 1) * c.stack, 0);
+      cards = cards.filter(c => !toSell.includes(c));
+      totalEmerald += totalVal;
+      document.getElementById("emeraldCount").textContent = `💎 ${totalEmerald}`;
+      showToast(`売却！ +${totalVal}💎`);
+    } else {
+      const earnVal = val * dragging.card.stack;
+      cards = cards.filter(c => c !== dragging.card);
+      totalEmerald += earnVal;
+      document.getElementById("emeraldCount").textContent = `💎 ${totalEmerald}`;
+      showToast(`売却！ +${earnVal}💎`);
+    }
+  }
+
+  dragging = null;
+  draggingGroup = null;
+
+  // ゴミ箱エリアのハイライト解除
+  document.getElementById("trashZone").classList.remove("active");
+}, { passive: false });
+
+// ─── Clamp card to reasonable bounds ─────────────────────────────────────────
+function clampCard(card) {
+  // ワールド座標での可動域（カメラ考慮）
+  const margin = 20;
+  const minX = (-cam.x / cam.scale) - CARD_W + margin;
+  const maxX = (-cam.x / cam.scale) + canvas.width / cam.scale - margin;
+  const minY = (-cam.y / cam.scale) + margin;
+  const maxY = (-cam.y / cam.scale) + (canvas.height - UI_H) / cam.scale - CARD_H;
+  card.x = Math.max(minX, Math.min(maxX, card.x));
+  card.y = Math.max(minY, Math.min(maxY, card.y));
+}
+
+// ─── Update ──────────────────────────────────────────────────────────────────
+function update(dt) {
+  const groups = buildGroups();
+  const newProgress = {};
+
+  for (const group of groups) {
+    const key = groupKey(group);
+    const recipe = matchRecipe(group);
+
+    if (recipe) {
+      const prev = groupProgress[key] || { recipe, progress: 0 };
+      // レシピが変わっていたらリセット
+      const prog = (prev.recipe === recipe || prev.recipe.output === recipe.output)
+        ? prev.progress + dt
+        : 0 + dt;
+
+      if (prog >= recipe.time * 1000) {
+        // クラフト完成
+        const base = group[0];
+        cards = cards.filter(c => !group.includes(c));
+        const nx = base.x + 10 + Math.random() * 20;
+        const ny = base.y + 10 + Math.random() * 20;
+        createCard(recipe.output, nx, ny);
+        showToast(`✨ ${recipe.output} 完成！`);
+      } else {
+        newProgress[key] = { recipe, progress: prog };
+      }
+    }
+  }
+
+  groupProgress = newProgress;
+
+  // ゴミ箱ハイライト
+  // (touchmoveで判定できないためtouchend側で処理済み)
+}
+
+// ─── Draw ─────────────────────────────────────────────────────────────────────
+function drawCard(c) {
+  const style = cardStyles[c.type] || { bg:"#fff", border:"#888", icon:"?" };
+  const x = c.x, y = c.y, w = c.w, h = c.h;
+
+  // 影
+  ctx.shadowColor = "rgba(0,0,0,0.25)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 3;
+
+  // 背景
+  ctx.fillStyle = style.bg;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 8);
+  ctx.fill();
+
+  ctx.shadowColor = "transparent";
+
+  // ボーダー
+  ctx.strokeStyle = style.border;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 8);
+  ctx.stroke();
+
+  // アイコン
+  ctx.font = "28px serif";
+  ctx.textAlign = "center";
+  ctx.fillText(style.icon, x + w/2, y + 52);
+
+  // カード名
+  ctx.font = "bold 11px sans-serif";
+  ctx.fillStyle = "#333";
+  ctx.textAlign = "center";
+  ctx.fillText(c.type, x + w/2, y + 20);
+
+  // 売却値
+  if (sellValues[c.type]) {
+    ctx.font = "10px sans-serif";
+    ctx.fillStyle = "#555";
+    ctx.textAlign = "left";
+    ctx.fillText(`💎${sellValues[c.type]}`, x + 5, y + h - 6);
+  }
+
+  // スタック
+  if (c.stack > 1) {
+    ctx.font = "bold 11px sans-serif";
+    ctx.fillStyle = "#222";
+    ctx.textAlign = "right";
+    ctx.fillText(`x${c.stack}`, x + w - 5, y + h - 6);
+  }
+
+  ctx.textAlign = "left";
+}
+
+function drawProgressBar(group, key, recipe) {
+  const state = groupProgress[key];
+  if (!state) return;
+
+  const progress = state.progress / (recipe.time * 1000);
+
+  // グループの中心を求める
+  let cx = 0, cy = 0;
+  for (const c of group) { cx += c.x + c.w/2; cy += c.y; }
+  cx /= group.length;
+  cy = Math.min(...group.map(c => c.y)) - 14;
+
+  const bw = 70, bh = 8;
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath();
+  ctx.roundRect(cx - bw/2, cy, bw, bh, 4);
+  ctx.fill();
+
+  ctx.fillStyle = "#4fc";
+  ctx.beginPath();
+  ctx.roundRect(cx - bw/2, cy, bw * progress, bh, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(cx - bw/2, cy, bw, bh, 4);
+  ctx.stroke();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 背景グリッド
   ctx.save();
-  ctx.translate(offsetX, offsetY);
-  ctx.scale(scale, scale);
+  ctx.translate(cam.x, cam.y + UI_H);
+  ctx.scale(cam.scale, cam.scale);
 
-  for (let c of cards){
-    ctx.fillStyle="#fff";
-    ctx.fillRect(c.x, c.y, c.w, c.h);
-    ctx.strokeRect(c.x, c.y, c.w, c.h);
+  // ドット背景
+  ctx.fillStyle = "rgba(255,255,255,0.1)";
+  const gs = 40;
+  for (let gx = (-cam.x/cam.scale) % gs; gx < canvas.width/cam.scale; gx += gs) {
+    for (let gy = (-cam.y/cam.scale) % gs; gy < canvas.height/cam.scale; gy += gs) {
+      ctx.beginPath();
+      ctx.arc(gx, gy, 1.5, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
 
-    ctx.fillStyle="#000";
-    ctx.fillText(c.type, c.x+5, c.y+20);
+  // カード描画
+  for (const c of cards) {
+    drawCard(c);
+  }
+
+  // プログレスバー描画
+  const groups = buildGroups();
+  for (const group of groups) {
+    const key = groupKey(group);
+    const recipe = matchRecipe(group);
+    if (recipe && groupProgress[key]) {
+      drawProgressBar(group, key, recipe);
+    }
   }
 
   ctx.restore();
+
+  // ゴミ箱ハイライト（ドラッグ中に上部へ近づいたら）
 }
 
-// ループ
-let last = 0;
-function loop(t){
-  let dt = t - last;
-  last = t;
+// ─── Toast ───────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.opacity = "1";
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.opacity = "0"; }, 2000);
+}
 
+// ─── Loop ────────────────────────────────────────────────────────────────────
+let last = 0;
+function loop(t) {
+  const dt = Math.min(t - last, 100); // 最大100msでクランプ（タブ切替対策）
+  last = t;
   update(dt);
   draw();
-
   requestAnimationFrame(loop);
 }
 
-loop(0);
+requestAnimationFrame(loop);
 </script>
-
 </body>
 </html>
