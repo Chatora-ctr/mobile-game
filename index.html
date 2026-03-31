@@ -1,84 +1,227 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Simple Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Card Craft Prototype</title>
+<style>
+  body { margin:0; overflow:hidden; font-family:sans-serif; }
+  canvas { background:#cfe8cf; display:block; }
+
+  #ui {
+    position:fixed;
+    top:0; left:0;
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    background:#333;
+    color:white;
+    padding:5px;
+    z-index:10;
+  }
+
+  button { font-size:16px; }
+</style>
 </head>
 <body>
-<canvas id="game" width="400" height="300"></canvas>
+
+<div id="ui">
+  <button id="packBtn">パック開封</button>
+  <div>ゴミ箱（ここにドラッグで売却）</div>
+</div>
+
+<canvas id="game"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// プレイヤー
-let player = {
-    x: 50,
-    y: 100,
-    vx: 0,
-    vy: 0,
-    width: 20,
-    height: 20,
-    onGround: false
-};
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// 入力
-let keys = {};
-document.addEventListener("keydown", e => keys[e.code] = true);
-document.addEventListener("keyup", e => keys[e.code] = false);
+let scale = 1;
+let offsetX = 0;
+let offsetY = 50;
 
-// 定数
-const gravity = 0.5;
-const jumpPower = -10;
-const speed = 3;
+let cards = [];
+let groups = [];
+let nextId = 1;
 
-// ゲームループ
-function loop() {
-    update();
-    render();
-    requestAnimationFrame(loop);
+function createCard(type, x, y) {
+  cards.push({
+    id: nextId++,
+    type,
+    x, y,
+    w:80, h:100,
+    stack:1,
+    group:null,
+    crafting:false,
+    progress:0
+  });
 }
 
-// 状態更新
-function update() {
-    // 左右移動
-    if (keys["ArrowLeft"]) player.vx = -speed;
-    else if (keys["ArrowRight"]) player.vx = speed;
-    else player.vx = 0;
+// 初期状態
+createCard("human", 100, 200);
 
-    // ジャンプ
-    if (keys["Space"] && player.onGround) {
-        player.vy = jumpPower;
-        player.onGround = false;
+// パック内容
+document.getElementById("packBtn").onclick = () => {
+  createCard("tree", 200, 200);
+  createCard("rock", 300, 200);
+  createCard("apple_tree", 400, 200);
+};
+
+// レシピ
+const recipes = [
+  { inputs:{human:1, tree:1}, output:"wood", time:2000 },
+  { inputs:{human:1, rock:1}, output:"stone", time:2000 }
+];
+
+// タッチ操作
+let dragging = null;
+
+canvas.addEventListener("touchstart", e => {
+  let t = e.touches[0];
+  let x = (t.clientX - offsetX)/scale;
+  let y = (t.clientY - offsetY)/scale;
+
+  for (let i = cards.length-1; i>=0; i--) {
+    let c = cards[i];
+    if (x>c.x && x<c.x+c.w && y>c.y && y<c.y+c.h) {
+      dragging = c;
+      break;
+    }
+  }
+});
+
+canvas.addEventListener("touchmove", e => {
+  if (!dragging) return;
+  let t = e.touches[0];
+  dragging.x = (t.clientX - offsetX)/scale - dragging.w/2;
+  dragging.y = (t.clientY - offsetY)/scale - dragging.h/2;
+});
+
+canvas.addEventListener("touchend", e => {
+  // ゴミ箱判定
+  let t = e.changedTouches[0];
+  if (t.clientY < 50) {
+    if (dragging.type !== "human") {
+      cards = cards.filter(c => c !== dragging);
+    }
+  }
+  dragging = null;
+});
+
+// 重なり判定
+function isOverlap(a,b){
+  return !(a.x+a.w < b.x || b.x+b.w < a.x || a.y+a.h < b.y || b.y+b.h < a.y);
+}
+
+// グループ構築
+function buildGroups(){
+  groups = [];
+  let visited = new Set();
+
+  for (let c of cards) {
+    if (visited.has(c)) continue;
+
+    let stack = [c];
+    let group = [];
+
+    while(stack.length){
+      let cur = stack.pop();
+      if (visited.has(cur)) continue;
+      visited.add(cur);
+      group.push(cur);
+
+      for (let other of cards){
+        if (!visited.has(other) && isOverlap(cur, other)){
+          stack.push(other);
+        }
+      }
     }
 
-    // 重力
-    player.vy += gravity;
+    groups.push(group);
+  }
+}
 
-    // 移動
-    player.x += player.vx;
-    player.y += player.vy;
+// レシピ判定
+function matchRecipe(group){
+  let count = {};
+  for (let c of group){
+    count[c.type] = (count[c.type]||0)+1;
+  }
 
-    // 地面判定
-    if (player.y + player.height > 250) {
-        player.y = 250 - player.height;
-        player.vy = 0;
-        player.onGround = true;
+  for (let r of recipes){
+    let ok = true;
+    let keys = Object.keys(r.inputs);
+
+    if (keys.length !== Object.keys(count).length) continue;
+
+    for (let k of keys){
+      if (count[k] !== r.inputs[k]) ok = false;
     }
+
+    if (ok) return r;
+  }
+  return null;
+}
+
+// 更新
+function update(dt){
+  buildGroups();
+
+  for (let g of groups){
+    let r = matchRecipe(g);
+
+    if (r){
+      g.progress = (g.progress||0)+dt;
+
+      if (g.progress >= r.time){
+        // 完成
+        let base = g[0];
+        cards = cards.filter(c => !g.includes(c));
+
+        createCard(r.output, base.x+20, base.y+20);
+      }
+    } else {
+      g.progress = 0;
+    }
+  }
 }
 
 // 描画
-function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // 地面
-    ctx.fillRect(0, 250, 400, 50);
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
 
-    // プレイヤー
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+  for (let c of cards){
+    ctx.fillStyle="#fff";
+    ctx.fillRect(c.x, c.y, c.w, c.h);
+    ctx.strokeRect(c.x, c.y, c.w, c.h);
+
+    ctx.fillStyle="#000";
+    ctx.fillText(c.type, c.x+5, c.y+20);
+  }
+
+  ctx.restore();
 }
 
-loop();
+// ループ
+let last = 0;
+function loop(t){
+  let dt = t - last;
+  last = t;
+
+  update(dt);
+  draw();
+
+  requestAnimationFrame(loop);
+}
+
+loop(0);
 </script>
+
 </body>
 </html>
