@@ -4,94 +4,175 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Card Craft</title>
 <style>
-  * { box-sizing: border-box; }
-  body { margin:0; overflow:hidden; font-family:'Segoe UI', sans-serif; touch-action:none; }
-  canvas { display:block; background:#7ec87e; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { overflow: hidden; font-family: 'Georgia', serif; background: #b8e0b2; touch-action: none; }
+  canvas { display: block; }
 
   #ui {
-    position:fixed;
-    top:0; left:0;
-    width:100%;
-    height:52px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    background:rgba(30,30,30,0.92);
-    color:white;
-    padding:0 12px;
-    z-index:10;
-    gap:8px;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 52px;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    z-index: 10;
+    border-bottom: 2px solid #e8b84b;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    gap: 6px;
   }
 
-  #packBtn {
-    font-size:14px;
-    background:#4a9e4a;
-    color:white;
-    border:none;
-    border-radius:8px;
-    padding:6px 14px;
-    cursor:pointer;
-    font-weight:bold;
-    white-space:nowrap;
+  .ui-zone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 11px;
+    border-radius: 6px;
+    padding: 4px 8px;
+    height: 36px;
+    transition: background 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
-  #packBtn:active { background:#3a7e3a; }
 
   #trashZone {
-    font-size:13px;
-    color:#ffd;
-    background:rgba(200,60,60,0.5);
-    border:2px dashed #f88;
-    border-radius:8px;
-    padding:5px 14px;
-    flex:1;
-    text-align:center;
-    white-space:nowrap;
+    color: #ccc;
+    background: rgba(255,255,255,0.07);
+    border: 1px dashed rgba(255,255,255,0.3);
+    min-width: 80px;
   }
-  #trashZone.active {
-    background:rgba(200,60,60,0.9);
-    border-color:#fff;
+  #trashZone.active { background: rgba(255,80,80,0.3); border-color: #ff5050; color: #ff9090; }
+
+  #packShopZone {
+    color: #e8d080;
+    background: rgba(232,184,75,0.1);
+    border: 1px dashed rgba(232,184,75,0.5);
+    min-width: 120px;
+  }
+  #packShopZone.active { background: rgba(232,184,75,0.35); border-color: #e8b84b; color: #ffe080; }
+
+  #emeraldDisplay {
+    color: #4ecdc4;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
   }
 
-  #emeraldCount {
-    font-size:14px;
-    color:#7fffb2;
-    font-weight:bold;
-    white-space:nowrap;
+  #initPackCard {
+    position: fixed;
+    bottom: 70px;
+    right: 16px;
+    width: 86px;
+    height: 108px;
+    background: linear-gradient(135deg, #2a2a4a, #1a1a3a);
+    border: 2px solid #e8b84b;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #e8b84b;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    gap: 5px;
+    user-select: none;
+  }
+  #initPackCard .pi { font-size: 30px; }
+  #initPackCard sub { font-size: 9px; color: #aaa; font-weight: normal; }
+  #initPackCard:active { transform: scale(0.95); }
+
+  #packOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+  }
+  #packOverlay.show { display: flex; }
+  #packOverlay h2 { color: #e8b84b; font-size: 20px; letter-spacing: 2px; }
+  #packCards { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+
+  .pack-card-preview {
+    width: 80px; height: 100px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .pack-card-preview.pop { opacity: 1; transform: scale(1); }
+  .pch { height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; }
+  .pcb { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; padding: 4px; }
+
+  #packCloseBtn {
+    padding: 10px 32px; font-size: 15px; font-family: Georgia, serif;
+    background: linear-gradient(135deg, #e8b84b, #c49a2a);
+    color: #1a1a1a; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+  }
+
+  #recipeHint {
+    position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,20,40,0.82); color: #bbb; font-size: 10px;
+    padding: 4px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);
+    pointer-events: none; white-space: nowrap; z-index: 5;
   }
 
   #toast {
-    position:fixed;
-    bottom:24px;
-    left:50%;
-    transform:translateX(-50%);
-    background:rgba(0,0,0,0.75);
-    color:#fff;
-    padding:8px 20px;
-    border-radius:20px;
-    font-size:14px;
-    pointer-events:none;
-    opacity:0;
-    transition:opacity 0.3s;
-    z-index:20;
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,20,40,0.9); color: #fff; font-size: 12px;
+    padding: 6px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.15);
+    pointer-events: none; z-index: 50; opacity: 0; transition: opacity 0.25s;
+    white-space: nowrap;
   }
+  #toast.show { opacity: 1; }
 </style>
 </head>
 <body>
-
 <div id="ui">
-  <button id="packBtn">📦 パック開封</button>
-  <div id="trashZone">🗑 ここにドラッグで売却</div>
-  <div id="emeraldCount">💎 0</div>
+  <div class="ui-zone" id="trashZone">🗑 売却</div>
+  <div class="ui-zone" id="packShopZone">📦 パック購入 💎×3</div>
+  <div id="emeraldDisplay">💎<span id="emeraldCount">0</span></div>
 </div>
 
 <canvas id="game"></canvas>
+
+<div id="initPackCard">
+  <div class="pi">📦</div>
+  <div>スターターパック</div>
+  <sub>タップで開封</sub>
+</div>
+
+<div id="packOverlay">
+  <h2>✨ パック開封！</h2>
+  <div id="packCards"></div>
+  <button id="packCloseBtn">盤面に追加</button>
+</div>
+
+<div id="recipeHint">human+tree→木材　human+rock→石材　wood×2+stone×2+human→家</div>
 <div id="toast"></div>
 
 <script>
-// ─── Canvas Setup ───────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// 定数
+// ══════════════════════════════════════════════════════════
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const UI_H = 52;
+const CW = 80, CH = 100;
 
 function resize() {
   canvas.width = window.innerWidth;
@@ -100,507 +181,505 @@ function resize() {
 resize();
 window.addEventListener("resize", resize);
 
-// ─── Camera ─────────────────────────────────────────────────────────────────
-let cam = { x:0, y:0, scale:1 };
-
-function worldToScreen(wx, wy) {
-  return {
-    x: wx * cam.scale + cam.x,
-    y: wy * cam.scale + cam.y + UI_H
-  };
-}
-function screenToWorld(sx, sy) {
-  return {
-    x: (sx - cam.x) / cam.scale,
-    y: (sy - UI_H - cam.y) / cam.scale
-  };
-}
-
-// ─── State ───────────────────────────────────────────────────────────────────
-let cards = [];
-let nextId = 1;
-let totalEmerald = 0;
-
-// グループのprogress管理（グループIDベース）
-let groupProgress = {}; // groupKey -> { recipe, progress }
-
-function groupKey(group) {
-  return group.map(c => c.id).sort((a,b) => a-b).join(",");
-}
-
-// ─── Card ────────────────────────────────────────────────────────────────────
-const CARD_W = 80;
-const CARD_H = 100;
-
-// カードの見た目設定
-const cardStyles = {
-  human:      { bg:"#e8d5b0", border:"#a0834a", icon:"👤" },
-  tree:       { bg:"#c8e8c0", border:"#4a8a4a", icon:"🌳" },
-  rock:       { bg:"#d0d0d0", border:"#707070", icon:"🪨" },
-  apple_tree: { bg:"#ffe8c0", border:"#c07030", icon:"🍎" },
-  wood:       { bg:"#d4b896", border:"#8a5a2a", icon:"🪵" },
-  stone:      { bg:"#c8c8b8", border:"#606050", icon:"🧱" },
-  emerald:    { bg:"#b0f0d0", border:"#20a060", icon:"💎" },
+// ── カード定義 ────────────────────────────────────────────
+// attr: human / resource / material / building / currency
+const DEFS = {
+  human:      { bg:"#f0ece0", hd:"#6b8cba", label:"人間",       attr:"human",    sell:null, maxUses:null, light:false },
+  tree:       { bg:"#2d3a2d", hd:"#1a2a1a", label:"木",         attr:"resource", sell:2,    maxUses:2,    light:true  },
+  rock:       { bg:"#6a6a7a", hd:"#4a4a5a", label:"岩",         attr:"resource", sell:3,    maxUses:2,    light:true  },
+  apple_tree: { bg:"#2d4a2d", hd:"#1a3a1a", label:"リンゴの木", attr:"resource", sell:4,    maxUses:2,    light:true  },
+  wood:       { bg:"#c8a060", hd:"#8a6030", label:"木材",       attr:"material", sell:5,    maxUses:null, light:false },
+  stone:      { bg:"#8a9090", hd:"#5a6060", label:"石材",       attr:"material", sell:6,    maxUses:null, light:true  },
+  house:      { bg:"#e0d8c0", hd:"#8a7050", label:"家",         attr:"building", sell:null, maxUses:null, light:false },
+  emerald:    { bg:"#0d2a1a", hd:"#072010", label:"エメラルド", attr:"currency", sell:null, maxUses:null, light:true  },
 };
+function def(type) { return DEFS[type] || { bg:"#fff", hd:"#ccc", label:type, attr:"material", sell:1, maxUses:null, light:false }; }
 
-function createCard(type, x, y) {
-  const card = {
-    id: nextId++,
-    type,
-    x, y,
-    w: CARD_W,
-    h: CARD_H,
-    stack: 1,
-  };
-  cards.push(card);
-  return card;
-}
+const ATTR_LABEL = { human:"人間", resource:"資源", material:"素材", building:"建物", currency:"通貨" };
+const ATTR_COLOR = { human:"#5a7aaa", resource:"#4a7a4a", material:"#a07030", building:"#7a6040", currency:"#2a6a5a" };
 
-// ─── Recipes ─────────────────────────────────────────────────────────────────
-const recipes = [
-  { inputs:{ human:1, tree:1 },      output:"wood",  time:5 },
-  { inputs:{ human:1, rock:1 },      output:"stone", time:3 },
-  { inputs:{ human:1, apple_tree:1 },output:"wood",  time:8 },
+// ── レシピ ────────────────────────────────────────────────
+// keepAttrs: クラフト完了後もカードを残す属性の配列
+const RECIPES = [
+  { inputs:{ human:1, tree:1 },          output:"wood",  time:3000, keepAttrs:["human"] },
+  { inputs:{ human:1, rock:1 },          output:"stone", time:2000, keepAttrs:["human"] },
+  { inputs:{ human:1, wood:2, stone:2 }, output:"house", time:6000, keepAttrs:["human"] },
 ];
 
-const sellValues = {
-  tree:5, rock:3, apple_tree:8,
-  wood:10, stone:7, emerald:1,
-};
-
-// ─── Initial State ────────────────────────────────────────────────────────────
-createCard("human", 120, 160);
-
-document.getElementById("packBtn").onclick = () => {
-  const bx = -cam.x / cam.scale + 100;
-  const by = -cam.y / cam.scale + 200;
-  createCard("tree",       bx,       by);
-  createCard("rock",       bx + 100, by);
-  createCard("apple_tree", bx + 200, by);
-  showToast("パック開封！ tree / rock / apple_tree");
-};
-
-// ─── Groups ──────────────────────────────────────────────────────────────────
-function isOverlap(a, b) {
-  return !(a.x + a.w < b.x || b.x + b.w < a.x ||
-           a.y + a.h < b.y || b.y + b.h < a.y);
+// ── パックプール ──────────────────────────────────────────
+const PACK_POOL = [
+  { type:"tree",       w:40 },
+  { type:"rock",       w:35 },
+  { type:"apple_tree", w:25 },
+];
+function drawPack(n) {
+  const total = PACK_POOL.reduce((s,p)=>s+p.w,0);
+  return Array.from({length:n}, () => {
+    let r = Math.random()*total;
+    for (const p of PACK_POOL) { r-=p.w; if(r<=0) return p.type; }
+    return PACK_POOL[0].type;
+  });
 }
 
-function buildGroups() {
-  const visited = new Set();
-  const groups = [];
-  for (const c of cards) {
-    if (visited.has(c.id)) continue;
-    const stack = [c];
-    const group = [];
-    while (stack.length) {
-      const cur = stack.pop();
-      if (visited.has(cur.id)) continue;
-      visited.add(cur.id);
-      group.push(cur);
-      for (const other of cards) {
-        if (!visited.has(other.id) && isOverlap(cur, other)) {
-          stack.push(other);
-        }
-      }
-    }
-    groups.push(group);
+// ══════════════════════════════════════════════════════════
+// 状態
+// ══════════════════════════════════════════════════════════
+let cards = [];
+let nextId = 1;
+let progressMap = {}; // groupKey → { progress, recipe }
+let dragging = null;
+let dragOffX = 0, dragOffY = 0;
+let lastTime = 0;
+let initPackOpened = false;
+let pendingPackTypes = [];
+
+function mkCard(type, x, y, extra={}) {
+  const d = def(type);
+  const c = { id:nextId++, type, x, y, w:CW, h:CH, stack:1, uses:0, maxUses:d.maxUses, ...extra };
+  cards.push(c);
+  return c;
+}
+
+// 初期
+mkCard("human", 140, 180);
+
+// ══════════════════════════════════════════════════════════
+// 初期パック
+// ══════════════════════════════════════════════════════════
+document.getElementById("initPackCard").addEventListener("click", () => {
+  if (initPackOpened) return;
+  initPackOpened = true;
+  document.getElementById("initPackCard").style.display = "none";
+  openPackOverlay(["tree","rock","apple_tree"]);
+});
+
+// ── パック開封UI ──────────────────────────────────────────
+function openPackOverlay(types) {
+  pendingPackTypes = types;
+  const cont = document.getElementById("packCards");
+  cont.innerHTML = "";
+  types.forEach((type, i) => {
+    const d = def(type);
+    const el = document.createElement("div");
+    el.className = "pack-card-preview";
+    el.innerHTML = `
+      <div class="pch" style="background:${d.hd};color:${d.light?"#ccc":"#fff"}">${d.label}</div>
+      <div class="pcb" style="background:${d.bg};color:${d.light?"#bbb":"#555"}">${d.label}</div>`;
+    cont.appendChild(el);
+    setTimeout(() => el.classList.add("pop"), 80 + i * 120);
+  });
+  document.getElementById("packOverlay").classList.add("show");
+}
+
+document.getElementById("packCloseBtn").addEventListener("click", () => {
+  document.getElementById("packOverlay").classList.remove("show");
+  const cx = canvas.width/2, cy = canvas.height/2 - 30;
+  const sp = 100;
+  const sx = cx - ((pendingPackTypes.length-1)*sp)/2;
+  pendingPackTypes.forEach((type, i) => {
+    const p = findFreePos(sx + i*sp, cy);
+    mkCard(type, p.x, p.y);
+  });
+  pendingPackTypes = [];
+});
+
+// ══════════════════════════════════════════════════════════
+// ユーティリティ
+// ══════════════════════════════════════════════════════════
+function overlap(a, b) {
+  return !(a.x+a.w<=b.x || b.x+b.w<=a.x || a.y+a.h<=b.y || b.y+b.h<=a.y);
+}
+
+function connected(start) {
+  const vis = new Set(); const stack=[start]; const grp=[];
+  while(stack.length) {
+    const cur=stack.pop();
+    if(vis.has(cur.id)) continue;
+    vis.add(cur.id); grp.push(cur);
+    for(const o of cards) if(!vis.has(o.id) && overlap(cur,o)) stack.push(o);
+  }
+  return grp;
+}
+
+function allGroups() {
+  const vis = new Set(); const groups=[];
+  for(const c of cards) {
+    if(vis.has(c.id)) continue;
+    const g = connected(c);
+    g.forEach(x=>vis.add(x.id));
+    groups.push(g);
   }
   return groups;
 }
 
-function matchRecipe(group) {
-  const count = {};
-  for (const c of group) count[c.type] = (count[c.type] || 0) + 1;
-  for (const r of recipes) {
-    let ok = true;
-    for (const key in r.inputs) {
-      if (count[key] !== r.inputs[key]) { ok = false; break; }
-    }
-    if (ok) {
-      for (const key in count) {
-        if (r.inputs[key] === undefined) { ok = false; break; }
-      }
-    }
-    if (ok) return r;
+function gKey(grp) { return grp.map(c=>c.id).sort((a,b)=>a-b).join(","); }
+
+function matchRecipe(grp) {
+  const cnt={};
+  for(const c of grp) cnt[c.type]=(cnt[c.type]||0)+1;
+  for(const r of RECIPES) {
+    let ok=true;
+    for(const k in r.inputs) if(cnt[k]!==r.inputs[k]){ok=false;break;}
+    if(!ok) continue;
+    for(const k in cnt) if(r.inputs[k]===undefined){ok=false;break;}
+    if(ok) return r;
   }
   return null;
 }
 
-// ─── Drag ─────────────────────────────────────────────────────────────────────
-let dragging = null;        // { card, offX, offY }
-let draggingGroup = null;   // [{ card, relX, relY }] グループ移動時
-
-function cardAt(wx, wy) {
-  for (let i = cards.length - 1; i >= 0; i--) {
-    const c = cards[i];
-    if (wx > c.x && wx < c.x + c.w && wy > c.y && wy < c.y + c.h) return c;
-  }
-  return null;
-}
-
-// グループの「一番下（最背面）カード」を取得
-function bottomCardOf(group) {
-  // cards配列の先頭寄りのほうが背面
-  let bottomIdx = Infinity;
-  let bottom = null;
-  for (const c of group) {
-    const idx = cards.indexOf(c);
-    if (idx < bottomIdx) { bottomIdx = idx; bottom = c; }
-  }
-  return bottom;
-}
-
-// ─── Pinch Zoom ───────────────────────────────────────────────────────────────
-let pinchDist0 = null;
-let pinchScale0 = null;
-let pinchMid0 = null;
-let panStart = null;   // 1本指パン開始
-
-function getTouchMid(touches) {
-  const t0 = touches[0], t1 = touches[1];
-  return { x: (t0.clientX + t1.clientX) / 2, y: (t0.clientY + t1.clientY) / 2 };
-}
-function getTouchDist(touches) {
-  const dx = touches[0].clientX - touches[1].clientX;
-  const dy = touches[0].clientY - touches[1].clientY;
-  return Math.sqrt(dx*dx + dy*dy);
-}
-
-canvas.addEventListener("touchstart", e => {
-  e.preventDefault();
-  if (e.touches.length === 2) {
-    // ピンチ開始
-    dragging = null;
-    draggingGroup = null;
-    pinchDist0 = getTouchDist(e.touches);
-    pinchScale0 = cam.scale;
-    pinchMid0 = getTouchMid(e.touches);
-    return;
-  }
-
-  const t = e.touches[0];
-  if (t.clientY < UI_H) return;
-
-  const w = screenToWorld(t.clientX, t.clientY);
-  const hit = cardAt(w.x, w.y);
-
-  if (!hit) {
-    // 空白パン開始
-    panStart = { tx: t.clientX, ty: t.clientY, cx: cam.x, cy: cam.y };
-    return;
-  }
-
-  // グループを調べる
-  const groups = buildGroups();
-  const group = groups.find(g => g.some(c => c === hit));
-
-  if (group && group.length > 1) {
-    const bottom = bottomCardOf(group);
-    if (hit === bottom) {
-      // グループ移動モード
-      draggingGroup = group.map(c => ({ card: c, relX: c.x - hit.x, relY: c.y - hit.y }));
-      dragging = { card: hit, offX: w.x - hit.x, offY: w.y - hit.y };
-      // 全グループを最前面へ
-      cards = cards.filter(c => !group.includes(c));
-      cards.push(...group);
-      return;
+function findFreePos(bx, by) {
+  const angles=[0,Math.PI/2,Math.PI,3*Math.PI/2,Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
+  for(const d of [120,160,200,240]) {
+    for(const a of angles) {
+      const nx=Math.max(0,Math.min(canvas.width-CW, bx+Math.cos(a)*d));
+      const ny=Math.max(0,Math.min(canvas.height-UI_H-CH, by+Math.sin(a)*d));
+      const cand={x:nx,y:ny,w:CW,h:CH};
+      if(cards.every(c=>!overlap(c,cand))) return {x:nx,y:ny};
     }
   }
+  return {x:Math.min(bx+130,canvas.width-CW), y:by};
+}
 
-  // 単体ドラッグ
-  dragging = { card: hit, offX: w.x - hit.x, offY: w.y - hit.y };
-  cards = cards.filter(c => c !== hit);
-  cards.push(hit);
-}, { passive: false });
+function clampPos(x, y) {
+  return {
+    x: Math.max(0, Math.min(canvas.width - CW, x)),
+    y: Math.max(0, Math.min(canvas.height - UI_H - CH, y)),
+  };
+}
 
-canvas.addEventListener("touchmove", e => {
+// ── エメラルド管理 ────────────────────────────────────────
+function addEmeralds(n, sx, sy) {
+  const em = cards.find(c=>c.type==="emerald");
+  if(em) { em.stack+=n; }
+  else { const c=mkCard("emerald", sx||60, sy||200); c.stack=n; }
+  updateEmDisplay();
+}
+function updateEmDisplay() {
+  const em=cards.find(c=>c.type==="emerald");
+  document.getElementById("emeraldCount").textContent = em?em.stack:0;
+}
+
+// ── トースト ──────────────────────────────────────────────
+let toastTmr=null;
+function toast(msg) {
+  const el=document.getElementById("toast");
+  el.textContent=msg; el.classList.add("show");
+  clearTimeout(toastTmr);
+  toastTmr=setTimeout(()=>el.classList.remove("show"),2000);
+}
+
+// ══════════════════════════════════════════════════════════
+// タッチ
+// ══════════════════════════════════════════════════════════
+function tp(t) { return {x:t.clientX, y:t.clientY-UI_H}; }
+
+canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
-  if (e.touches.length === 2 && pinchDist0 !== null) {
-    const dist = getTouchDist(e.touches);
-    const mid = getTouchMid(e.touches);
-    const ratio = dist / pinchDist0;
-    const newScale = Math.max(0.3, Math.min(3, pinchScale0 * ratio));
-
-    // ズーム：ミッドポイントを基準
-    const wx = (pinchMid0.x - cam.x) / cam.scale;
-    const wy = (pinchMid0.y - UI_H - cam.y) / cam.scale;
-    cam.scale = newScale;
-    cam.x = pinchMid0.x - wx * newScale;
-    cam.y = pinchMid0.y - UI_H - wy * newScale;
-
-    // パン（ミッドが動いた分）
-    cam.x += mid.x - pinchMid0.x;
-    cam.y += mid.y - pinchMid0.y;
-    pinchMid0 = mid;
-    return;
-  }
-
-  const t = e.touches[0];
-  if (t.clientY < UI_H) return;
-  const w = screenToWorld(t.clientX, t.clientY);
-
-  if (dragging) {
-    const newX = w.x - dragging.offX;
-    const newY = w.y - dragging.offY;
-
-    if (draggingGroup) {
-      // グループ全体移動
-      const dx = newX - dragging.card.x;
-      const dy = newY - dragging.card.y;
-      for (const { card, relX, relY } of draggingGroup) {
-        card.x = dragging.card.x + dx + relX;
-        card.y = dragging.card.y + dy + relY;
-        clampCard(card);
-      }
-      dragging.card.x = newX;
-      dragging.card.y = newY;
-      clampCard(dragging.card);
-    } else {
-      dragging.card.x = newX;
-      dragging.card.y = newY;
-      clampCard(dragging.card);
-    }
-    return;
-  }
-
-  if (panStart) {
-    cam.x = panStart.cx + (t.clientX - panStart.tx);
-    cam.y = panStart.cy + (t.clientY - panStart.ty);
-  }
-}, { passive: false });
-
-canvas.addEventListener("touchend", e => {
-  e.preventDefault();
-  pinchDist0 = null;
-  panStart = null;
-
-  if (!dragging) return;
-
-  const t = e.changedTouches[0];
-
-  // ゴミ箱判定（画面上部UI内）
-  if (t.clientY < UI_H && dragging.card.type !== "human") {
-    const val = sellValues[dragging.card.type] || 1;
-    const cx = dragging.card.x, cy = dragging.card.y;
-
-    if (draggingGroup) {
-      // グループごと売却（humanは除く）
-      const toSell = draggingGroup.map(d => d.card).filter(c => c.type !== "human");
-      const totalVal = toSell.reduce((s, c) => s + (sellValues[c.type] || 1) * c.stack, 0);
-      cards = cards.filter(c => !toSell.includes(c));
-      totalEmerald += totalVal;
-      document.getElementById("emeraldCount").textContent = `💎 ${totalEmerald}`;
-      showToast(`売却！ +${totalVal}💎`);
-    } else {
-      const earnVal = val * dragging.card.stack;
-      cards = cards.filter(c => c !== dragging.card);
-      totalEmerald += earnVal;
-      document.getElementById("emeraldCount").textContent = `💎 ${totalEmerald}`;
-      showToast(`売却！ +${earnVal}💎`);
+  const {x,y}=tp(e.touches[0]);
+  for(let i=cards.length-1;i>=0;i--) {
+    const c=cards[i];
+    if(x>=c.x&&x<=c.x+c.w&&y>=c.y&&y<=c.y+c.h) {
+      dragging=c;
+      dragOffX=x-c.x; dragOffY=y-c.y;
+      cards.splice(i,1); cards.push(c);
+      // ドラッグ開始時にクラフト進行をキャンセル
+      cancelCraftForCard(c);
+      break;
     }
   }
+},{passive:false});
 
-  dragging = null;
-  draggingGroup = null;
+canvas.addEventListener("touchmove", e=>{
+  e.preventDefault();
+  if(!dragging) return;
+  const {x,y}=tp(e.touches[0]);
+  const p=clampPos(x-dragOffX, y-dragOffY);
+  dragging.x=p.x; dragging.y=p.y;
 
-  // ゴミ箱エリアのハイライト解除
+  const rawY=e.touches[0].clientY;
+  const d=def(dragging.type);
+  document.getElementById("trashZone").classList.toggle("active", rawY<UI_H && !!d.sell);
+  document.getElementById("packShopZone").classList.toggle("active", rawY<UI_H && dragging.type==="emerald");
+},{passive:false});
+
+canvas.addEventListener("touchend", e=>{
+  e.preventDefault();
+  const t=e.changedTouches[0];
   document.getElementById("trashZone").classList.remove("active");
-}, { passive: false });
+  document.getElementById("packShopZone").classList.remove("active");
+  if(!dragging) return;
 
-// ─── Clamp card to reasonable bounds ─────────────────────────────────────────
-function clampCard(card) {
-  // ワールド座標での可動域（カメラ考慮）
-  const margin = 20;
-  const minX = (-cam.x / cam.scale) - CARD_W + margin;
-  const maxX = (-cam.x / cam.scale) + canvas.width / cam.scale - margin;
-  const minY = (-cam.y / cam.scale) + margin;
-  const maxY = (-cam.y / cam.scale) + (canvas.height - UI_H) / cam.scale - CARD_H;
-  card.x = Math.max(minX, Math.min(maxX, card.x));
-  card.y = Math.max(minY, Math.min(maxY, card.y));
+  if(t.clientY<UI_H) {
+    handleUIZoneDrop(t);
+  } else {
+    // 盤面ドロップ → スタック補正 → クラフト開始
+    snapStack(dragging);
+    tryStartCraft(dragging);
+  }
+
+  dragging=null;
+  updateEmDisplay();
+},{passive:false});
+
+function cancelCraftForCard(card) {
+  // このカードが含まれるクラフトをキャンセル
+  for(const key of Object.keys(progressMap)) {
+    const ids=key.split(",").map(Number);
+    if(ids.includes(card.id)) delete progressMap[key];
+  }
 }
 
-// ─── Update ──────────────────────────────────────────────────────────────────
+function handleUIZoneDrop(t) {
+  const d=def(dragging.type);
+  if(dragging.type==="emerald") {
+    if(dragging.stack>=3) {
+      dragging.stack-=3;
+      if(dragging.stack<=0) cards=cards.filter(c=>c!==dragging);
+      updateEmDisplay();
+      openPackOverlay(drawPack(3));
+      toast("パックを購入しました！");
+    } else {
+      toast("💎が3個必要です");
+    }
+  } else if(d.sell) {
+    const val=(d.sell||1)*dragging.stack;
+    const sx=dragging.x, sy=dragging.y;
+    cards=cards.filter(c=>c!==dragging);
+    addEmeralds(val, sx, sy);
+    toast(`売却: 💎×${val}`);
+  }
+}
+
+// ── スタック位置補正 ──────────────────────────────────────
+// ドロップ後、重なったグループ内でカード名が見えるよう縦にずらし・横を揃える
+function snapStack(dropped) {
+  const grp = connected(dropped);
+  if(grp.length<=1) return;
+
+  // dropped以外を「既存スタック」とし、最も上にあるカードのxに揃える
+  const others = grp.filter(c=>c!==dropped);
+  if(others.length===0) return;
+
+  // 基準X（一番多いX座標に合わせる、またはothers[0]のx）
+  const baseX = others[0].x;
+
+  // 既存スタックの中で最もyが大きい（一番手前・下）カードを探す
+  const maxY = Math.max(...others.map(c=>c.y));
+
+  // droppedを基準Xに揃え、最下段の20px下に配置
+  const newX = baseX;
+  const newY = maxY + 20;
+  const p = clampPos(newX, newY);
+  dropped.x = p.x;
+  dropped.y = p.y;
+}
+
+// ── クラフト開始（ドロップ時のみ） ───────────────────────
+function tryStartCraft(dropped) {
+  const grp = connected(dropped);
+  const recipe = matchRecipe(grp);
+  if(!recipe) return;
+  const key = gKey(grp);
+  if(progressMap[key]) return; // 既に進行中
+  progressMap[key] = { progress:0, recipe };
+}
+
+// ══════════════════════════════════════════════════════════
+// 更新
+// ══════════════════════════════════════════════════════════
 function update(dt) {
-  const groups = buildGroups();
-  const newProgress = {};
+  const newPM = {};
+  const groupsByKey = {};
+  for(const g of allGroups()) groupsByKey[gKey(g)] = g;
 
-  for (const group of groups) {
-    const key = groupKey(group);
-    const recipe = matchRecipe(group);
+  for(const [key, info] of Object.entries(progressMap)) {
+    const grp = groupsByKey[key];
+    if(!grp) continue; // グループ消滅
 
-    if (recipe) {
-      const prev = groupProgress[key] || { recipe, progress: 0 };
-      // レシピが変わっていたらリセット
-      const prog = (prev.recipe === recipe || prev.recipe.output === recipe.output)
-        ? prev.progress + dt
-        : 0 + dt;
+    // グループ構成が変化していないか
+    if(gKey(grp)!==key) continue;
 
-      if (prog >= recipe.time * 1000) {
-        // クラフト完成
-        const base = group[0];
-        cards = cards.filter(c => !group.includes(c));
-        const nx = base.x + 10 + Math.random() * 20;
-        const ny = base.y + 10 + Math.random() * 20;
-        createCard(recipe.output, nx, ny);
-        showToast(`✨ ${recipe.output} 完成！`);
-      } else {
-        newProgress[key] = { recipe, progress: prog };
+    // ドラッグ中カードが含まれていたらキャンセル
+    if(dragging && grp.some(c=>c.id===dragging.id)) continue;
+
+    const recipe = matchRecipe(grp);
+    if(!recipe || recipe.output!==info.recipe.output) continue;
+
+    const np = info.progress + dt;
+    if(np >= recipe.time) {
+      // ── 完成 ──
+      const base = grp[0];
+      const keepAttrs = recipe.keepAttrs || [];
+      const toRemove = [];
+
+      for(const c of grp) {
+        const d = def(c.type);
+        if(keepAttrs.includes(d.attr)) {
+          // 残す
+        } else if(d.attr==="resource") {
+          c.uses = (c.uses||0)+1;
+          if(c.maxUses && c.uses>=c.maxUses) toRemove.push(c);
+        } else {
+          toRemove.push(c);
+        }
       }
+
+      cards = cards.filter(c=>!toRemove.includes(c));
+
+      // keepするカードをばらす
+      const kept = grp.filter(c=>!toRemove.includes(c));
+      kept.forEach((c,i)=>{
+        const p=clampPos(base.x+i*12, base.y+i*12);
+        c.x=p.x; c.y=p.y;
+      });
+
+      // 出力カード生成
+      const pos = findFreePos(base.x, base.y);
+      mkCard(recipe.output, pos.x, pos.y);
+      updateEmDisplay();
+    } else {
+      newPM[key] = { progress:np, recipe };
     }
   }
 
-  groupProgress = newProgress;
-
-  // ゴミ箱ハイライト
-  // (touchmoveで判定できないためtouchend側で処理済み)
+  progressMap = newPM;
 }
 
-// ─── Draw ─────────────────────────────────────────────────────────────────────
-function drawCard(c) {
-  const style = cardStyles[c.type] || { bg:"#fff", border:"#888", icon:"?" };
-  const x = c.x, y = c.y, w = c.w, h = c.h;
+// ══════════════════════════════════════════════════════════
+// 描画
+// ══════════════════════════════════════════════════════════
+function drawCard(c, craftProg, craftTotal) {
+  const d = def(c.type);
+  const {x,y} = c;
+  const isDrag = c===dragging;
+  const r=8;
 
-  // 影
-  ctx.shadowColor = "rgba(0,0,0,0.25)";
-  ctx.shadowBlur = 6;
-  ctx.shadowOffsetY = 3;
+  ctx.save();
+  if(isDrag) {
+    ctx.shadowColor="rgba(0,0,0,0.45)";
+    ctx.shadowBlur=14;
+    ctx.shadowOffsetY=5;
+  }
 
-  // 背景
-  ctx.fillStyle = style.bg;
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 8);
-  ctx.fill();
+  // 本体
+  ctx.beginPath(); ctx.roundRect(x,y,CW,CH,r);
+  ctx.fillStyle=d.bg; ctx.fill();
 
-  ctx.shadowColor = "transparent";
-
-  // ボーダー
-  ctx.strokeStyle = style.border;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 8);
-  ctx.stroke();
-
-  // アイコン
-  ctx.font = "28px serif";
-  ctx.textAlign = "center";
-  ctx.fillText(style.icon, x + w/2, y + 52);
+  // ヘッダー
+  ctx.beginPath(); ctx.roundRect(x,y,CW,24,[r,r,0,0]);
+  ctx.fillStyle=d.hd; ctx.fill();
 
   // カード名
-  ctx.font = "bold 11px sans-serif";
-  ctx.fillStyle = "#333";
-  ctx.textAlign = "center";
-  ctx.fillText(c.type, x + w/2, y + 20);
+  ctx.fillStyle=d.light?"#ddd":"#fff";
+  ctx.font="bold 11px Georgia";
+  ctx.textAlign="center";
+  ctx.fillText(d.label, x+CW/2, y+16);
 
-  // 売却値
-  if (sellValues[c.type]) {
-    ctx.font = "10px sans-serif";
-    ctx.fillStyle = "#555";
-    ctx.textAlign = "left";
-    ctx.fillText(`💎${sellValues[c.type]}`, x + 5, y + h - 6);
+  // 属性バッジ（左）
+  const al=ATTR_LABEL[d.attr]||"";
+  const ac=ATTR_COLOR[d.attr]||"#888";
+  ctx.fillStyle=ac;
+  ctx.beginPath(); ctx.roundRect(x+3,y+27,30,13,3); ctx.fill();
+  ctx.fillStyle="#fff"; ctx.font="8px Georgia"; ctx.textAlign="center";
+  ctx.fillText(al, x+18, y+36);
+
+  // 売却値（右）
+  if(d.sell) {
+    ctx.fillStyle="rgba(0,0,0,0.18)";
+    ctx.beginPath(); ctx.roundRect(x+CW-34,y+27,31,13,3); ctx.fill();
+    ctx.fillStyle=d.light?"#9de":"#555";
+    ctx.font="9px Georgia"; ctx.textAlign="center";
+    ctx.fillText("💎"+d.sell, x+CW-18, y+37);
   }
 
-  // スタック
-  if (c.stack > 1) {
-    ctx.font = "bold 11px sans-serif";
-    ctx.fillStyle = "#222";
-    ctx.textAlign = "right";
-    ctx.fillText(`x${c.stack}`, x + w - 5, y + h - 6);
+  // 資源の残り使用回数バー
+  if(d.attr==="resource" && d.maxUses) {
+    const used=c.uses||0;
+    const ratio=(d.maxUses-used)/d.maxUses;
+    const bx=x+4,by=y+44,bw=CW-8,bh=8;
+    ctx.fillStyle="rgba(0,0,0,0.2)";
+    ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,3); ctx.fill();
+    ctx.fillStyle="#7de87a";
+    ctx.beginPath(); ctx.roundRect(bx,by,bw*ratio,bh,3); ctx.fill();
+    ctx.fillStyle=d.light?"#ccc":"#444";
+    ctx.font="8px sans-serif"; ctx.textAlign="center";
+    ctx.fillText(`残${d.maxUses-used}/${d.maxUses}`, x+CW/2, by+7);
   }
 
-  ctx.textAlign = "left";
-}
-
-function drawProgressBar(group, key, recipe) {
-  const state = groupProgress[key];
-  if (!state) return;
-
-  const progress = state.progress / (recipe.time * 1000);
-
-  // グループの中心を求める
-  let cx = 0, cy = 0;
-  for (const c of group) { cx += c.x + c.w/2; cy += c.y; }
-  cx /= group.length;
-  cy = Math.min(...group.map(c => c.y)) - 14;
-
-  const bw = 70, bh = 8;
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
-  ctx.beginPath();
-  ctx.roundRect(cx - bw/2, cy, bw, bh, 4);
-  ctx.fill();
-
-  ctx.fillStyle = "#4fc";
-  ctx.beginPath();
-  ctx.roundRect(cx - bw/2, cy, bw * progress, bh, 4);
-  ctx.fill();
-
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(cx - bw/2, cy, bw, bh, 4);
-  ctx.stroke();
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // 背景グリッド
-  ctx.save();
-  ctx.translate(cam.x, cam.y + UI_H);
-  ctx.scale(cam.scale, cam.scale);
-
-  // ドット背景
-  ctx.fillStyle = "rgba(255,255,255,0.1)";
-  const gs = 40;
-  for (let gx = (-cam.x/cam.scale) % gs; gx < canvas.width/cam.scale; gx += gs) {
-    for (let gy = (-cam.y/cam.scale) % gs; gy < canvas.height/cam.scale; gy += gs) {
-      ctx.beginPath();
-      ctx.arc(gx, gy, 1.5, 0, Math.PI*2);
-      ctx.fill();
-    }
+  // スタック数
+  if(c.stack>1) {
+    ctx.fillStyle="rgba(0,0,0,0.6)";
+    ctx.beginPath(); ctx.roundRect(x+CW-28,y+CH-22,25,18,4); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
+    ctx.fillText("×"+c.stack, x+CW-15, y+CH-9);
   }
 
-  // カード描画
-  for (const c of cards) {
-    drawCard(c);
+  // クラフト進行バー
+  if(craftTotal>0) {
+    const ratio=Math.min(craftProg/craftTotal,1);
+    const bx=x+4, by=y+CH-14, bw=CW-8, bh=8;
+    ctx.fillStyle="rgba(0,0,0,0.3)";
+    ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,4); ctx.fill();
+    const g=ctx.createLinearGradient(bx,0,bx+bw,0);
+    g.addColorStop(0,"#4ecdc4"); g.addColorStop(1,"#45b7d1");
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.roundRect(bx,by,bw*ratio,bh,4); ctx.fill();
+    // 残り秒
+    const rem=Math.ceil((craftTotal-craftProg)/1000);
+    ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.font="8px sans-serif"; ctx.textAlign="center";
+    ctx.fillText(rem+"s", x+CW/2, by-1);
   }
 
-  // プログレスバー描画
-  const groups = buildGroups();
-  for (const group of groups) {
-    const key = groupKey(group);
-    const recipe = matchRecipe(group);
-    if (recipe && groupProgress[key]) {
-      drawProgressBar(group, key, recipe);
-    }
+  // ドラッグ中アウトライン
+  if(isDrag) {
+    ctx.strokeStyle="#e8b84b"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.roundRect(x,y,CW,CH,r); ctx.stroke();
   }
 
   ctx.restore();
-
-  // ゴミ箱ハイライト（ドラッグ中に上部へ近づいたら）
 }
 
-// ─── Toast ───────────────────────────────────────────────────────────────────
-let toastTimer = null;
-function showToast(msg) {
-  const el = document.getElementById("toast");
-  el.textContent = msg;
-  el.style.opacity = "1";
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.style.opacity = "0"; }, 2000);
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // 背景（淡い緑）
+  ctx.fillStyle="#b8e0b2";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // ドット格子
+  ctx.fillStyle="rgba(0,80,0,0.06)";
+  for(let gx=0;gx<canvas.width;gx+=40)
+    for(let gy=UI_H;gy<canvas.height;gy+=40) {
+      ctx.beginPath(); ctx.arc(gx,gy,1.2,0,Math.PI*2); ctx.fill();
+    }
+
+  // カードID→クラフト情報
+  const ci=new Map();
+  for(const [key,info] of Object.entries(progressMap)) {
+    for(const id of key.split(",").map(Number))
+      ci.set(id,{progress:info.progress,total:info.recipe.time});
+  }
+
+  ctx.save();
+  ctx.translate(0,UI_H);
+  for(const c of cards) {
+    const inf=ci.get(c.id);
+    drawCard(c, inf?inf.progress:0, inf?inf.total:0);
+  }
+  ctx.restore();
 }
 
-// ─── Loop ────────────────────────────────────────────────────────────────────
-let last = 0;
+// ══════════════════════════════════════════════════════════
+// ループ
+// ══════════════════════════════════════════════════════════
 function loop(t) {
-  const dt = Math.min(t - last, 100); // 最大100msでクランプ（タブ切替対策）
-  last = t;
+  const dt=Math.min(t-lastTime,100);
+  lastTime=t;
   update(dt);
   draw();
   requestAnimationFrame(loop);
 }
-
-requestAnimationFrame(loop);
+requestAnimationFrame(t=>{ lastTime=t; requestAnimationFrame(loop); });
 </script>
 </body>
 </html>
