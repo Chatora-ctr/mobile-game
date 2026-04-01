@@ -185,12 +185,15 @@ window.addEventListener("resize", resize);
 // attr: human / resource / material / building / currency
 const DEFS = {
   human:      { bg:"#f0ece0", hd:"#6b8cba", label:"村人",       attr:"human",    sell:null, maxUses:null, light:false },
-  tree:       { bg:"#2d3a2d", hd:"#1a2a1a", label:"木",         attr:"resource", sell:2,    maxUses:2,    light:true  },
-  rock:       { bg:"#6a6a7a", hd:"#4a4a5a", label:"岩",         attr:"resource", sell:3,    maxUses:2,    light:true  },
-  apple_tree: { bg:"#2d4a2d", hd:"#1a3a1a", label:"リンゴの木", attr:"resource", sell:4,    maxUses:2,    light:true  },
-  wood:       { bg:"#c8a060", hd:"#8a6030", label:"木材",       attr:"material", sell:5,    maxUses:null, light:false },
-  stone:      { bg:"#8a9090", hd:"#5a6060", label:"石材",       attr:"material", sell:6,    maxUses:null, light:true  },
-  house:      { bg:"#e0d8c0", hd:"#8a7050", label:"家",         attr:"building", sell:null, maxUses:null, light:false },
+  baby:       { bg:"#f0ece0", hd:"#6b8cba", label:"赤ちゃん",   attr:"human",    sell:null, maxUses:null, light:false },
+  tree:       { bg:"#2d3a2d", hd:"#1a2a1a", label:"木",         attr:"resource", sell:1,    maxUses:2,    light:true  },
+  rock:       { bg:"#6a6a7a", hd:"#4a4a5a", label:"岩",         attr:"resource", sell:1,    maxUses:2,    light:true  },
+  apple_tree: { bg:"#2d4a2d", hd:"#1a3a1a", label:"リンゴの木", attr:"resource", sell:1,    maxUses:2,    light:true  },
+  wood:       { bg:"#c8a060", hd:"#8a6030", label:"木材",       attr:"material", sell:1,    maxUses:null, light:false },
+  stick:      { bg:"#2d3a2d", hd:"#1a2a1a", label:"木の棒",     attr:"material", sell:2,    maxUses:null, light:true  },
+  dirt:       { bg:"#2d3a2d", hd:"#1a2a1a", label:"土",         attr:"material", sell:0,    maxUses:null, light:true  },
+  stone:      { bg:"#8a9090", hd:"#5a6060", label:"石材",       attr:"material", sell:1,    maxUses:null, light:true  },
+  house:      { bg:"#e0d8c0", hd:"#8a7050", label:"家",         attr:"building", sell:4,    maxUses:null, light:false },
   emerald:    { bg:"#3cb371", hd:"#2a6a5a", label:"エメラルド", attr:"currency", sell:null, maxUses:null, light:true  },
 };
 function def(type) { return DEFS[type] || { bg:"#fff", hd:"#ccc", label:type, attr:"material", sell:1, maxUses:null, light:false }; }
@@ -204,6 +207,9 @@ const RECIPES = [
   { inputs:{ human:1, tree:1 },          output:"wood",  time:3000, keepAttrs:["human"] },
   { inputs:{ human:1, rock:1 },          output:"stone", time:2000, keepAttrs:["human"] },
   { inputs:{ human:1, wood:2, stone:2 }, output:"house", time:6000, keepAttrs:["human"] },
+  { inputs:{ human:1, wood:1 },         output:"stick",  time:3000, keepAttrs:["human"] },
+  { inputs:{ human:2, house:1 },        output:"baby",   time:10000, keepAttrs:["human", "building"] },
+  { inputs:{ baby:1,  house:1 },        output:"human",  time:10000, keepAttrs:["building"] },
 ];
 
 // ── パックプール ──────────────────────────────────────────
