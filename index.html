@@ -467,9 +467,9 @@ function snapStack(dropped) {
   // 既存スタックの中で最もyが大きい（一番手前・下）カードを探す
   const maxY = Math.max(...others.map(c=>c.y));
 
-  // droppedを基準Xに揃え、最下段の25px下に配置
+  // droppedを基準Xに揃え、最下段の24px下に配置
   const newX = baseX;
-  const newY = maxY + 25;
+  const newY = maxY + 24;
   const p = clampPos(newX, newY);
   dropped.x = p.x;
   dropped.y = p.y;
