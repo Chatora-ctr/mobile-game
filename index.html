@@ -146,7 +146,7 @@ canvas { display:block; }
 <body>
 
 <div id="ui">
-  <div class="ui-zone" id="trashZone">🗑 売却</div>
+  <div class="ui-zone" id="trashZone">売却</div>
   <div id="packShopsRow">
     <div class="pack-shop-zone" id="packShopA">
       <span class="ps-name">冒険パック</span><span class="ps-cost">💎×3</span>
@@ -158,7 +158,7 @@ canvas { display:block; }
 </div>
 
 <div id="dayBarWrap"><div id="dayBar"></div></div>
-<div id="dayLabel">開始前</div>
+<div id="dayLabel">0日目</div>
 
 <canvas id="game"></canvas>
 
@@ -200,14 +200,13 @@ const DAY_MS = 2 * 60 * 1000;
 
 function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
 resize();
-window.addEventListener("resize", resize);
 
 // ── 属性スタイル ──────────────────────────────
 const ATTR_STYLE = {
   human:    { hd:"#4a6a9a", bg:"#7aaad0", label:"人間",   light:false },
   resource: { hd:"#3a6a3a", bg:"#6aaa6a", label:"資源",   light:false },
   material: { hd:"#7a5020", bg:"#b88050", label:"素材",   light:false },
-  building: { hd:"#6a5030", bg:"#a08060", label:"建物",   light:false },
+  building: { hd:"#6a5030", bg:"#a08060", label:"施設",   light:false },
   currency: { hd:"#2a6050", bg:"#4a9880", label:"通貨",   light:true  },
   tool:     { hd:"#5a3070", bg:"#9060a8", label:"道具",   light:true  },
   food:     { hd:"#8a3030", bg:"#c86060", label:"食べ物", light:false },
@@ -220,17 +219,20 @@ const DEFS = {
   baby:       { label:"赤ちゃん",   attr:"human",    sell:null, maxUses:null },
   tree:       { label:"木",         attr:"resource", sell:1,    maxUses:2    },
   rock:       { label:"岩",         attr:"resource", sell:1,    maxUses:2    },
-  apple_tree: { label:"リンゴの木", attr:"resource", sell:1,    maxUses:3    },
+  apple_tree: { label:"リンゴの木", attr:"resource", sell:1,    maxUses:2    },
   wood:       { label:"木材",       attr:"material", sell:1,    maxUses:null },
-  stick:      { label:"木の棒",     attr:"material", sell:1,    maxUses:null },
+  stick:      { label:"木の棒",     attr:"material", sell:2,    maxUses:null },
   dirt:       { label:"土",         attr:"material", sell:0,    maxUses:null },
+  soil:       { label:"耕地",       attr:"building", sell:1,    maxUses:null },
   stone:      { label:"石材",       attr:"material", sell:1,    maxUses:null },
   flint:      { label:"火打石",     attr:"material", sell:2,    maxUses:null },
   seed:       { label:"種",         attr:"material", sell:1,    maxUses:null },
+  flour:      { label:"小麦",       attr:"material", sell:1,    maxUses:null },
   house:      { label:"家",         attr:"building", sell:4,    maxUses:null },
   hoe:        { label:"くわ",       attr:"tool",     sell:2,    maxUses:5    },
   emerald:    { label:"エメラルド", attr:"currency", sell:null, maxUses:null },
-  apple:      { label:"リンゴ",     attr:"food",     sell:2,    maxUses:null, satiety:2 },
+  apple:      { label:"リンゴ",     attr:"food",     sell:2,    maxUses:null, satiety:1 },
+  bread:      { label:"パン",       attr:"food",     sell:3,    maxUses:null, satiety:5 },
 };
 function def(type){ return DEFS[type]||{label:type,attr:"material",sell:1,maxUses:null}; }
 
@@ -244,6 +246,10 @@ const RECIPES = [
   { inputs:{baby:1,house:1},         variants:[{out:"human",w:100}],                   time:10000, keepAttrs:["building"] },
   { inputs:{wood:2,stick:1},         variants:[{out:"hoe",  w:100}],                   time:4000,  keepAttrs:[] },
   { inputs:{human:1,apple_tree:1},   variants:[{out:"apple",w:100}],                   time:4000,  keepAttrs:["human"] },
+  { inputs:{dirt:1,hoe:1,human:1},   variants:[{out:"soil", w:100}],                   time:5000,  keepAttrs:["human"] },
+  { inputs:{dirt:1,apple:1},         variants:[{out:"apple_tree",w:100}],              time:10000, keepAttrs:[] },
+  { inputs:{soil:1,seed:1},          variants:[{out:"flour",w:100}],                   time:8000,  keepAttrs:["building"] },
+  { inputs:{flour:2},                variants:[{out:"bread",w:100}],                   time:7000,  keepAttrs:[] },
 ];
 function pickOut(r){ const tot=r.variants.reduce((s,v)=>s+v.w,0); let x=Math.random()*tot; for(const v of r.variants){x-=v.w;if(x<=0)return v.out;} return r.variants[0].out; }
 
@@ -290,11 +296,21 @@ function mkCard(type,x,y,extra={}){
 }
 function worldClamp(x,y){ return {x:Math.max(0,Math.min(WORLD_W-CW,x)), y:Math.max(0,Math.min(WORLD_H-CH,y))}; }
 
-// 初期カード
-mkCard("human",200,300);
+// 初期カード（ワールド中央に配置）
+const INIT_WX = WORLD_W/2, INIT_WY = WORLD_H/2;
+mkCard("human", INIT_WX, INIT_WY);
 
 // ── カメラ変換 ──────────────────────────────
 function s2w(sx,sy){ return {x:(sx-camX)/camScale, y:(sy-camY)/camScale}; }
+
+// 初期カメラ：ワールド中央をスクリーン中央に合わせる
+function initCamera(){
+  const gameH = canvas.height - UI_H;
+  camX = canvas.width/2  - INIT_WX * camScale;
+  camY = gameH/2         - INIT_WY * camScale;
+}
+initCamera();
+window.addEventListener("resize", ()=>{ resize(); initCamera(); });
 
 // カメラをワールド境界内にクランプ
 // ワールドの端がスクリーン外に出すぎないように制限する
@@ -363,7 +379,7 @@ function startMealPhase(){
   const foodCards=cards.filter(c=>def(c.type).attr==="food");
 
   document.getElementById("mealInfo").innerHTML=
-    `村人: <b>${needed}</b>人　必要なリンゴ: <b>${needed}</b>個<br>食べさせるリンゴをタップして選択してください。`;
+    `村人: <b>${needed}</b>人　必要な満腹度: <b>${needed*2}</b><br>食べさせる食料をタップして選択してください。`;
 
   const list=document.getElementById("mealFoodList");
   list.innerHTML="";
@@ -372,11 +388,15 @@ function startMealPhase(){
   } else {
     foodCards.forEach(c=>{
       const d=def(c.type),as=attrSt(d.attr);
+      // 実際の満腹度を計算（partialSatietyを考慮）
+      const actualSat = c.partialSatiety!==undefined
+        ? (c.stack-1)*(d.satiety||0)+c.partialSatiety
+        : (d.satiety||0)*c.stack;
       const el=document.createElement("div");
       el.className="meal-food-item";
       el.dataset.cardId=c.id;
       el.innerHTML=`<div class="mfh" style="background:${as.hd}">${d.label}</div>
-                    <div class="mfb" style="background:${as.bg}">満腹度${d.satiety||0}<br>×${c.stack}</div>`;
+                    <div class="mfb" style="background:${as.bg}">満腹度 ${actualSat}</div>`;
       el.addEventListener("click",()=>toggleMealFood(c,el,needed));
       list.appendChild(el);
     });
@@ -400,7 +420,14 @@ function selectedSatiety(){
   let s=0;
   for(const id of mealSelectedIds){
     const c=cards.find(x=>x.id===id);
-    if(c) s+=(def(c.type).satiety||0)*c.stack;
+    if(!c) continue;
+    const d=def(c.type);
+    // partialSatietyがある場合：(stack-1)*satiety + partialSatiety
+    if(c.partialSatiety!==undefined){
+      s+=(c.stack-1)*(d.satiety||0)+c.partialSatiety;
+    } else {
+      s+=(d.satiety||0)*c.stack;
+    }
   }
   return s;
 }
@@ -426,10 +453,37 @@ document.getElementById("mealConfirmBtn").addEventListener("click",()=>{
   const fed=Math.floor(sat/2);
   const dead=Math.max(0,needed-fed);
 
-  // 選択した食べ物カードを削除
+  // 選択した食べ物カードを満腹度単位で消費し、余剰はカードに残す
+  let satNeeded = needed * 2; // 必要総満腹度
   for(const id of mealSelectedIds){
-    const idx=cards.findIndex(c=>c.id===id);
-    if(idx>=0) cards.splice(idx,1);
+    if(satNeeded<=0) break;
+    const c=cards.find(x=>x.id===id);
+    if(!c) continue;
+    const d=def(c.type);
+    // partialSatiety を考慮した実際の総満腹度
+    const cardSat = c.partialSatiety!==undefined
+      ? (c.stack-1)*(d.satiety||0)+c.partialSatiety
+      : (d.satiety||0)*c.stack;
+    if(cardSat<=satNeeded){
+      // 全部消費
+      satNeeded-=cardSat;
+      cards=cards.filter(x=>x.id!==id);
+    } else {
+      // 一部消費 → 余剰満腹度をカードに残す
+      const surplus=cardSat-satNeeded;
+      satNeeded=0;
+      const newStack=Math.floor(surplus/(d.satiety||1));
+      const remSat=surplus%(d.satiety||1);
+      if(newStack>0){
+        c.stack=newStack;
+        if(remSat>0) c.partialSatiety=remSat; else delete c.partialSatiety;
+      } else if(remSat>0){
+        c.stack=1;
+        c.partialSatiety=remSat;
+      } else {
+        cards=cards.filter(x=>x.id!==id);
+      }
+    }
   }
   mealSelectedIds.clear();
 
@@ -485,15 +539,21 @@ function connected(start){
 
 // クラフト進行管理用：ドラッグ中カードを除外してグループ構築
 function allGroupsForCraft(){
-  // 単体ドラッグ中のカードIDセット（グループドラッグは除外しない）
-  const excludeIds = (dragging && !isDragGroup) ? new Set([dragging.id]) : new Set();
-  // グループドラッグ中は移動してもクラフト継続
-  const dragGroupIds = isDragGroup ? new Set(groupCards.map(c=>c.id)) : new Set();
+  // 単体ドラッグ：そのカードを除外
+  // グループドラッグ：グループ全カードを除外（通過してもクラフトリセットしない）
+  let excludeIds;
+  if(dragging && !isDragGroup){
+    excludeIds = new Set([dragging.id]);
+  } else if(dragging && isDragGroup){
+    excludeIds = new Set(groupCards.map(c=>c.id));
+  } else {
+    excludeIds = new Set();
+  }
 
   const vis=new Set(), groups=[];
   for(const c of cards){
     if(vis.has(c.id)) continue;
-    if(excludeIds.has(c.id)) continue; // ドラッグ中カード自体はスキップ
+    if(excludeIds.has(c.id)) continue;
     const g=connectedExcluding(c, excludeIds);
     g.forEach(x=>vis.add(x.id));
     groups.push(g);
@@ -612,18 +672,19 @@ canvas.addEventListener("touchstart",e=>{
     if(hit){
       const {card,idx}=hit;
       const grp=connected(card);
+      // タップしたカードのYより大きい（上に積まれた）カードを収集
+      const tapY=card.y;
+      const moveCards=grp.filter(c=>c.y>=tapY);
 
-      if(grp.length>1){
+      // グループが複数かつ、タップカードが最下位（Y最小）の場合もグループ全体移動
+      const isBottomCard = grp.length>1 && grp.every(c=>c.y>=tapY);
+
+      if(grp.length>1 && (moveCards.length>1 || isBottomCard)){
         // ── グループ移動 ──
-        // タップしたカードより上（Y大きい）のカードを全て一緒に動かす
-        // タップしたカード自身を含め、それ以上のYを持つカードを収集
-        const tapY=card.y;
-        const moveCards=grp.filter(c=>c.y>=tapY);
-        // moveCardsを最前面へ（cards配列内のZオーダー）
-        // 元のZ順を保ちつつ最前面へ移動
-        const notMoved=cards.filter(c=>!moveCards.includes(c));
-        // moveCardsをgrp内のY順（小→大）で並べ直す
-        const sortedMove=[...moveCards].sort((a,b)=>a.y-b.y);
+        // isBottomCard の場合はグループ全体を移動
+        const actualMove = isBottomCard ? [...grp] : moveCards;
+        const notMoved=cards.filter(c=>!actualMove.includes(c));
+        const sortedMove=[...actualMove].sort((a,b)=>a.y-b.y);
         cards.splice(0,cards.length,...notMoved,...sortedMove);
 
         isDragGroup=true;
@@ -631,11 +692,23 @@ canvas.addEventListener("touchstart",e=>{
         groupCards=[...sortedMove];
         groupOffsets=sortedMove.map(c=>({dx:wpos.x-c.x,dy:wpos.y-c.y}));
       } else {
-        // ── 単体移動 ──
+        // ── 単体移動（孤立カード、またはグループ最上位カードの単独引き抜き） ──
+        const grpBefore=connected(card);
+        const restGrp=grpBefore.filter(c=>c.id!==card.id);
+
         isDragGroup=false; dragging=card;
         dragOffX=wpos.x-card.x; dragOffY=wpos.y-card.y;
         cards.splice(idx,1); cards.push(card);
         cancelCraftForCard(card);
+
+        // 残りグループでレシピが成立すればクラフト開始
+        if(restGrp.length>0){
+          const restRecipe=matchRecipe(restGrp);
+          if(restRecipe){
+            const rk=gKey(restGrp);
+            if(!progressMap[rk]) progressMap[rk]={progress:0,recipe:restRecipe};
+          }
+        }
       }
     } else {
       panActive=true;
@@ -736,8 +809,8 @@ function handleUIZoneDrop(t){
   let total=0, sx=dragging.x, sy=dragging.y;
   for(const sc of sellCards){
     const sd=def(sc.type);
-    if(sd.sell&&sd.sell>0&&sc.type!=="human"){
-      total+=(sd.sell||1)*sc.stack;
+    if(sd.sell!==null&&sd.sell>=0&&sc.type!=="human"){
+      total+=(sd.sell)*sc.stack;
       cards=cards.filter(c=>c!==sc);
     }
   }
@@ -817,13 +890,27 @@ function update(dt){
   }
 
   // ── クラフト更新 ──────────────────────────
-  // ポイント：allGroupsForCraft()でドラッグ中カードを除外してグループを構築
-  // → ドラッグ中カードが通過してもクラフトグループのキーが変わらない
   const newPM={};
   const byKey={};
   for(const g of allGroupsForCraft()) byKey[gKey(g)]=g;
 
+  // グループドラッグ中のカードIDセット
+  const dragGroupIdSet = (isDragGroup && groupCards.length>0)
+    ? new Set(groupCards.map(c=>c.id))
+    : new Set();
+
   for(const [key,info] of Object.entries(progressMap)){
+    // グループドラッグ中：そのグループがクラフト中グループに完全に含まれる場合は進捗を維持
+    const craftIds = new Set(key.split(",").map(Number));
+    if(isDragGroup && dragGroupIdSet.size>0){
+      const allInDrag = [...craftIds].every(id=>dragGroupIdSet.has(id));
+      if(allInDrag){
+        // ドラッグ中のグループ自体がクラフト中 → リセットせず進捗維持
+        newPM[key]=info;
+        continue;
+      }
+    }
+
     const grp=byKey[key];
     if(!grp||gKey(grp)!==key) continue;
 
@@ -870,7 +957,42 @@ function update(dt){
       // 出力カード生成
       const outType=pickOut(recipe);
       const pos=findFreePos(baseX,baseY);
-      mkCard(outType,pos.x,pos.y);
+      const newCard=mkCard(outType,pos.x,pos.y);
+
+      // 近くに同種カードがあれば自動グループ化（同種のみのグループに限定）
+      const SNAP_DIST=250;
+      const sameType=cards.filter(c=>c.id!==newCard.id&&c.type===outType);
+      if(sameType.length>0){
+        // 最も近い同種カードを探す（全方向・そのグループが同種のみかチェック）
+        let nearest=null, nearestDist=Infinity;
+        for(const sc of sameType){
+          const cx=(sc.x+CW/2)-(newCard.x+CW/2);
+          const cy=(sc.y+CH/2)-(newCard.y+CH/2);
+          const dist=Math.sqrt(cx*cx+cy*cy);
+          if(dist<nearestDist){
+            const grpCheck=connected(sc);
+            const allSame=grpCheck.every(gc=>gc.type===outType);
+            if(allSame){ nearestDist=dist; nearest=sc; }
+          }
+        }
+        if(nearest && nearestDist<SNAP_DIST){
+          // nearestのスタック末尾に積む
+          const grpN=connected(nearest);
+          grpN.sort((a,b)=>a.y-b.y);
+          const maxYN=Math.max(...grpN.map(c=>c.y));
+          const sp=worldClamp(grpN[0].x, maxYN+24);
+          newCard.x=sp.x; newCard.y=sp.y;
+          // グループ化後にレシピが成立すればクラフト開始
+          setTimeout(()=>{
+            const snapGrp=connected(newCard);
+            const snapRecipe=matchRecipe(snapGrp);
+            if(snapRecipe){
+              const sk=gKey(snapGrp);
+              if(!progressMap[sk]) progressMap[sk]={progress:0,recipe:snapRecipe};
+            }
+          }, 50);
+        }
+      }
 
       // 資源が残っている場合 → 自動再開
       if(autoRestart.length>0){
@@ -931,7 +1053,7 @@ function drawCard(c,craftProg,craftTotal){
   ctx.fillText(as.label,x+18,y+37);
 
   // 売却値
-  if(d.sell&&d.sell>0){
+  if(d.sell!==null&&d.sell>=0){
     ctx.fillStyle="rgba(0,0,0,.18)";
     ctx.beginPath(); ctx.roundRect(x+CW-34,y+27,31,13,3); ctx.fill();
     ctx.fillStyle=as.light?"#dde":"#fff";
@@ -944,7 +1066,10 @@ function drawCard(c,craftProg,craftTotal){
     ctx.fillStyle="rgba(255,255,255,.2)";
     ctx.beginPath(); ctx.roundRect(x+3,y+43,CW-6,14,3); ctx.fill();
     ctx.fillStyle="#fff"; ctx.font="bold 10px Georgia"; ctx.textAlign="center";
-    ctx.fillText("満腹度 "+d.satiety,x+CW/2,y+53);
+    const dispSat = c.partialSatiety!==undefined
+      ? (c.stack>1 ? `満腹度 ${(c.stack-1)*d.satiety}+${c.partialSatiety}` : `満腹度 ${c.partialSatiety}`)
+      : `満腹度 ${d.satiety}`;
+    ctx.fillText(dispSat,x+CW/2,y+53);
   }
 
   // 道具耐久バー
@@ -963,7 +1088,7 @@ function drawCard(c,craftProg,craftTotal){
   if(c.stack>1){
     ctx.fillStyle="rgba(0,0,0,.6)";
     ctx.beginPath(); ctx.roundRect(x+CW-28,y+CH-22,25,18,4); ctx.fill();
-    ctx.fillStyle="#fff"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
+    ctx.fillStyle="#fff"; ctx.font="bold 11px Georgia"; ctx.textAlign="center";
     ctx.fillText("×"+c.stack,x+CW-15,y+CH-9);
   }
 
