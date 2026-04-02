@@ -4,156 +4,166 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Card Craft</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { overflow: hidden; font-family: 'Georgia', serif; background: #b8e0b2; touch-action: none; }
-  canvas { display: block; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { overflow:hidden; font-family:'Georgia',serif; background:#b8e0b2; touch-action:none; }
+canvas { display:block; }
 
-  #ui {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%;
-    height: 52px;
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 10px;
-    z-index: 10;
-    border-bottom: 2px solid #e8b84b;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    gap: 6px;
-  }
+#ui {
+  position:fixed; top:0; left:0; width:100%; height:52px;
+  background:linear-gradient(180deg,#1a1a2e,#16213e);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 10px; z-index:10;
+  border-bottom:2px solid #e8b84b;
+  box-shadow:0 2px 8px rgba(0,0,0,.5); gap:6px;
+}
+.ui-zone {
+  display:flex; align-items:center; justify-content:center; gap:4px;
+  font-size:11px; border-radius:6px; padding:4px 8px; height:36px;
+  transition:background .2s,border-color .2s; flex-shrink:0; white-space:nowrap;
+}
+#trashZone {
+  color:#ccc; background:rgba(255,255,255,.07);
+  border:1px dashed rgba(255,255,255,.3); min-width:60px;
+}
+#trashZone.active { background:rgba(255,80,80,.3); border-color:#ff5050; color:#ff9090; }
 
-  .ui-zone {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    font-size: 11px;
-    border-radius: 6px;
-    padding: 4px 8px;
-    height: 36px;
-    transition: background 0.2s, border-color 0.2s;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
+#packShopsRow { display:flex; gap:5px; flex:1; justify-content:center; }
+.pack-shop-zone {
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:1px; font-size:10px; border-radius:6px;
+  padding:2px 7px; height:36px; white-space:nowrap; line-height:1.3;
+}
+.pack-shop-zone .ps-name { font-weight:bold; font-size:11px; }
+.pack-shop-zone .ps-cost { font-size:9px; opacity:.8; }
+#packShopA { color:#e8d080; background:rgba(232,184,75,.1); border:1px dashed rgba(232,184,75,.5); }
+#packShopA.active { background:rgba(232,184,75,.35); border-color:#e8b84b; }
+#packShopB { color:#a0d0ff; background:rgba(80,160,255,.1); border:1px dashed rgba(80,160,255,.4); }
+#packShopB.active { background:rgba(80,160,255,.3); border-color:#60b0ff; }
 
-  #trashZone {
-    color: #ccc;
-    background: rgba(255,255,255,0.07);
-    border: 1px dashed rgba(255,255,255,0.3);
-    min-width: 80px;
-  }
-  #trashZone.active { background: rgba(255,80,80,0.3); border-color: #ff5050; color: #ff9090; }
+/* 日数バー */
+#dayBarWrap {
+  position:fixed; top:52px; left:0; width:100%; height:8px;
+  background:rgba(0,0,0,.25); z-index:9;
+}
+#dayBar { height:100%; width:0%; background:linear-gradient(90deg,#f0c040,#f08020); }
+#dayLabel {
+  position:fixed; top:53px; left:50%; transform:translateX(-50%);
+  font-size:10px; color:#ffe; text-shadow:0 1px 3px #000;
+  pointer-events:none; z-index:9; white-space:nowrap; line-height:1; padding-top:1px;
+}
 
-  #packShopZone {
-    color: #e8d080;
-    background: rgba(232,184,75,0.1);
-    border: 1px dashed rgba(232,184,75,0.5);
-    min-width: 120px;
-  }
-  #packShopZone.active { background: rgba(232,184,75,0.35); border-color: #e8b84b; color: #ffe080; }
+/* 初期パック */
+#initPackCard {
+  position:fixed; bottom:70px; right:16px;
+  width:86px; height:108px;
+  background:linear-gradient(135deg,#2a2a4a,#1a1a3a);
+  border:2px solid #e8b84b; border-radius:10px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:#e8b84b; font-size:11px; font-weight:bold;
+  cursor:pointer; z-index:20; box-shadow:0 4px 12px rgba(0,0,0,.5);
+  gap:5px; user-select:none;
+}
+#initPackCard .pi { font-size:30px; }
+#initPackCard sub { font-size:9px; color:#aaa; font-weight:normal; }
+#initPackCard:active { transform:scale(.95); }
 
-  #emeraldDisplay {
-    color: #4ecdc4;
-    font-size: 14px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    flex-shrink: 0;
-  }
+/* パック開封 */
+#packOverlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.75); z-index:100;
+  flex-direction:column; align-items:center; justify-content:center; gap:20px;
+}
+#packOverlay.show { display:flex; }
+#packOverlay h2 { color:#e8b84b; font-size:20px; letter-spacing:2px; }
+#packCards { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+.pack-card-preview {
+  width:80px; height:100px; border-radius:8px; overflow:hidden;
+  box-shadow:0 4px 16px rgba(0,0,0,.6);
+  opacity:0; transform:scale(.6); transition:opacity .25s,transform .25s;
+}
+.pack-card-preview.pop { opacity:1; transform:scale(1); }
+.pch { height:24px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:bold; }
+.pcb { flex:1; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold; padding:4px; }
+#packCloseBtn {
+  padding:10px 32px; font-size:15px; font-family:Georgia,serif;
+  background:linear-gradient(135deg,#e8b84b,#c49a2a);
+  color:#1a1a1a; border:none; border-radius:8px; font-weight:bold; cursor:pointer;
+}
 
-  #initPackCard {
-    position: fixed;
-    bottom: 70px;
-    right: 16px;
-    width: 86px;
-    height: 108px;
-    background: linear-gradient(135deg, #2a2a4a, #1a1a3a);
-    border: 2px solid #e8b84b;
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #e8b84b;
-    font-size: 11px;
-    font-weight: bold;
-    cursor: pointer;
-    z-index: 20;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    gap: 5px;
-    user-select: none;
-  }
-  #initPackCard .pi { font-size: 30px; }
-  #initPackCard sub { font-size: 9px; color: #aaa; font-weight: normal; }
-  #initPackCard:active { transform: scale(0.95); }
+/* 食事ターン */
+#mealOverlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.8); z-index:200;
+  flex-direction:column; align-items:center; justify-content:center; gap:16px;
+}
+#mealOverlay.show { display:flex; }
+#mealOverlay h2 { color:#f0c040; font-size:20px; letter-spacing:1px; }
+#mealInfo { color:#eee; font-size:13px; text-align:center; line-height:1.8; }
+#mealFoodList {
+  display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:90vw;
+}
+.meal-food-item {
+  width:72px; height:90px; border-radius:7px; overflow:hidden;
+  cursor:pointer; border:2px solid transparent;
+  box-shadow:0 2px 8px rgba(0,0,0,.5);
+  transition:border-color .15s,transform .15s; user-select:none;
+}
+.meal-food-item.selected { border-color:#f0c040; transform:scale(1.06); }
+.meal-food-item .mfh { height:22px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold; color:#fff; }
+.meal-food-item .mfb { flex:1; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:bold; padding:3px; text-align:center; color:#fff; }
+#mealConfirmBtn {
+  padding:10px 28px; font-size:15px; font-family:Georgia,serif;
+  background:linear-gradient(135deg,#f0c040,#c09020);
+  color:#1a1a1a; border:none; border-radius:8px; font-weight:bold; cursor:pointer;
+}
 
-  #packOverlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    z-index: 100;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-  }
-  #packOverlay.show { display: flex; }
-  #packOverlay h2 { color: #e8b84b; font-size: 20px; letter-spacing: 2px; }
-  #packCards { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+/* ゲームオーバー */
+#gameoverOverlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.88); z-index:300;
+  flex-direction:column; align-items:center; justify-content:center; gap:20px;
+}
+#gameoverOverlay.show { display:flex; }
+#gameoverOverlay h1 { color:#ff6060; font-size:32px; letter-spacing:3px; }
+#gameoverOverlay p { color:#ccc; font-size:14px; text-align:center; }
+#restartBtn {
+  padding:12px 36px; font-size:16px; font-family:Georgia,serif;
+  background:linear-gradient(135deg,#e8b84b,#c49a2a);
+  color:#1a1a1a; border:none; border-radius:8px; font-weight:bold; cursor:pointer;
+}
 
-  .pack-card-preview {
-    width: 80px; height: 100px;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
-    opacity: 0;
-    transform: scale(0.6);
-    transition: opacity 0.25s, transform 0.25s;
-  }
-  .pack-card-preview.pop { opacity: 1; transform: scale(1); }
-  .pch { height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; }
-  .pcb { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; padding: 4px; }
 
-  #packCloseBtn {
-    padding: 10px 32px; font-size: 15px; font-family: Georgia, serif;
-    background: linear-gradient(135deg, #e8b84b, #c49a2a);
-    color: #1a1a1a; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
-  }
 
-  #recipeHint {
-    position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
-    background: rgba(20,20,40,0.82); color: #bbb; font-size: 10px;
-    padding: 4px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);
-    pointer-events: none; white-space: nowrap; z-index: 5;
-  }
-
-  #toast {
-    position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
-    background: rgba(20,20,40,0.9); color: #fff; font-size: 12px;
-    padding: 6px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.15);
-    pointer-events: none; z-index: 50; opacity: 0; transition: opacity 0.25s;
-    white-space: nowrap;
-  }
-  #toast.show { opacity: 1; }
+#toast {
+  position:fixed; top:68px; left:50%; transform:translateX(-50%);
+  background:rgba(20,20,40,.9); color:#fff; font-size:12px;
+  padding:6px 16px; border-radius:16px; border:1px solid rgba(255,255,255,.15);
+  pointer-events:none; z-index:50; opacity:0; transition:opacity .25s; white-space:nowrap;
+}
+#toast.show { opacity:1; }
 </style>
 </head>
 <body>
+
 <div id="ui">
-  <div class="ui-zone" id="trashZone">売却</div>
-  <div class="ui-zone" id="packShopZone">パック購入 ￥3</div>
-  <div id="emeraldDisplay">💎<span id="emeraldCount">0</span></div>
+  <div class="ui-zone" id="trashZone">🗑 売却</div>
+  <div id="packShopsRow">
+    <div class="pack-shop-zone" id="packShopA">
+      <span class="ps-name">冒険パック</span><span class="ps-cost">💎×3</span>
+    </div>
+    <div class="pack-shop-zone" id="packShopB">
+      <span class="ps-name">農業パック</span><span class="ps-cost">💎×3</span>
+    </div>
+  </div>
 </div>
+
+<div id="dayBarWrap"><div id="dayBar"></div></div>
+<div id="dayLabel">開始前</div>
 
 <canvas id="game"></canvas>
 
 <div id="initPackCard">
-  <div class="pi">📦</div>
-  <div>スターターパック</div>
-  <sub>タップで開封</sub>
+  <div class="pi">📦</div><div>冒険の始まり</div><sub>タップで開封</sub>
 </div>
 
 <div id="packOverlay">
@@ -162,169 +172,352 @@
   <button id="packCloseBtn">盤面に追加</button>
 </div>
 
-<div id="recipeHint">human+tree→木材　human+rock→石材　wood×2+stone×2+human→家</div>
+<div id="mealOverlay">
+  <h2>🍽 食事の時間</h2>
+  <div id="mealInfo"></div>
+  <div id="mealFoodList"></div>
+  <button id="mealConfirmBtn">確定</button>
+</div>
+
+<div id="gameoverOverlay">
+  <h1>GAME OVER</h1>
+  <p id="gameoverMsg"></p>
+  <button id="restartBtn">もう一度</button>
+</div>
+
 <div id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════
 // 定数
-// ══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════
 const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const UI_H = 52;
-const CW = 80, CH = 100;
+const ctx    = canvas.getContext("2d");
+const UI_H   = 60;   // UIバー52px + 日数バー8px
+const CW=80, CH=100;
+const WORLD_W=2400, WORLD_H=2400;
+const DAY_MS = 2 * 60 * 1000;
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
+function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
 resize();
 window.addEventListener("resize", resize);
 
-// ── カード定義 ────────────────────────────────────────────
-// attr: human / resource / material / building / currency
-const DEFS = {
-  human:      { bg:"#f0ece0", hd:"#6b8cba", label:"村人",       attr:"human",    sell:null, maxUses:null, light:false },
-  baby:       { bg:"#f0ece0", hd:"#6b8cba", label:"赤ちゃん",   attr:"human",    sell:null, maxUses:null, light:false },
-  tree:       { bg:"#2d3a2d", hd:"#1a2a1a", label:"木",         attr:"resource", sell:1,    maxUses:2,    light:true  },
-  rock:       { bg:"#6a6a7a", hd:"#4a4a5a", label:"岩",         attr:"resource", sell:1,    maxUses:2,    light:true  },
-  apple_tree: { bg:"#2d4a2d", hd:"#1a3a1a", label:"リンゴの木", attr:"resource", sell:1,    maxUses:2,    light:true  },
-  wood:       { bg:"#c8a060", hd:"#8a6030", label:"木材",       attr:"material", sell:1,    maxUses:null, light:false },
-  stick:      { bg:"#2d3a2d", hd:"#1a2a1a", label:"木の棒",     attr:"material", sell:2,    maxUses:null, light:true  },
-  dirt:       { bg:"#2d3a2d", hd:"#1a2a1a", label:"土",         attr:"material", sell:0,    maxUses:null, light:true  },
-  stone:      { bg:"#8a9090", hd:"#5a6060", label:"石材",       attr:"material", sell:1,    maxUses:null, light:true  },
-  house:      { bg:"#e0d8c0", hd:"#8a7050", label:"家",         attr:"building", sell:4,    maxUses:null, light:false },
-  emerald:    { bg:"#3cb371", hd:"#2a6a5a", label:"エメラルド", attr:"currency", sell:null, maxUses:null, light:true  },
+// ── 属性スタイル ──────────────────────────────
+const ATTR_STYLE = {
+  human:    { hd:"#4a6a9a", bg:"#7aaad0", label:"人間",   light:false },
+  resource: { hd:"#3a6a3a", bg:"#6aaa6a", label:"資源",   light:false },
+  material: { hd:"#7a5020", bg:"#b88050", label:"素材",   light:false },
+  building: { hd:"#6a5030", bg:"#a08060", label:"建物",   light:false },
+  currency: { hd:"#2a6050", bg:"#4a9880", label:"通貨",   light:true  },
+  tool:     { hd:"#5a3070", bg:"#9060a8", label:"道具",   light:true  },
+  food:     { hd:"#8a3030", bg:"#c86060", label:"食べ物", light:false },
 };
-function def(type) { return DEFS[type] || { bg:"#fff", hd:"#ccc", label:type, attr:"material", sell:1, maxUses:null, light:false }; }
+function attrSt(attr){ return ATTR_STYLE[attr]||{hd:"#888",bg:"#bbb",label:attr,light:false}; }
 
-const ATTR_LABEL = { human:"人間", resource:"資源", material:"素材", building:"建物", currency:"通貨" };
-const ATTR_COLOR = { human:"#5a7aaa", resource:"#4a7a4a", material:"#a07030", building:"#7a6040", currency:"#2a6a5a" };
+// ── カード定義 ────────────────────────────────
+const DEFS = {
+  human:      { label:"村人",       attr:"human",    sell:null, maxUses:null },
+  baby:       { label:"赤ちゃん",   attr:"human",    sell:null, maxUses:null },
+  tree:       { label:"木",         attr:"resource", sell:1,    maxUses:2    },
+  rock:       { label:"岩",         attr:"resource", sell:1,    maxUses:2    },
+  apple_tree: { label:"リンゴの木", attr:"resource", sell:1,    maxUses:3    },
+  wood:       { label:"木材",       attr:"material", sell:1,    maxUses:null },
+  stick:      { label:"木の棒",     attr:"material", sell:1,    maxUses:null },
+  dirt:       { label:"土",         attr:"material", sell:0,    maxUses:null },
+  stone:      { label:"石材",       attr:"material", sell:1,    maxUses:null },
+  flint:      { label:"火打石",     attr:"material", sell:2,    maxUses:null },
+  seed:       { label:"種",         attr:"material", sell:1,    maxUses:null },
+  house:      { label:"家",         attr:"building", sell:4,    maxUses:null },
+  hoe:        { label:"くわ",       attr:"tool",     sell:2,    maxUses:5    },
+  emerald:    { label:"エメラルド", attr:"currency", sell:null, maxUses:null },
+  apple:      { label:"リンゴ",     attr:"food",     sell:2,    maxUses:null, satiety:2 },
+};
+function def(type){ return DEFS[type]||{label:type,attr:"material",sell:1,maxUses:null}; }
 
-// ── レシピ ────────────────────────────────────────────────
-// keepAttrs: クラフト完了後もカードを残す属性の配列
+// ── レシピ ────────────────────────────────────
 const RECIPES = [
-  { inputs:{ human:1, tree:1 },          output:"wood",  time:3000, keepAttrs:["human"] },
-  { inputs:{ human:1, rock:1 },          output:"stone", time:2000, keepAttrs:["human"] },
-  { inputs:{ human:1, wood:2, stone:2 }, output:"house", time:6000, keepAttrs:["human"] },
-  { inputs:{ human:1, wood:1 },         output:"stick",  time:3000, keepAttrs:["human"] },
-  { inputs:{ human:2, house:1 },        output:"baby",   time:10000, keepAttrs:["human", "building"] },
-  { inputs:{ baby:1,  house:1 },        output:"human",  time:10000, keepAttrs:["building"] },
+  { inputs:{human:1,tree:1},         variants:[{out:"wood", w:100}],                   time:3000,  keepAttrs:["human"] },
+  { inputs:{human:1,rock:1},         variants:[{out:"stone",w:80},{out:"flint",w:20}], time:2000,  keepAttrs:["human"] },
+  { inputs:{human:1,wood:2,stone:2}, variants:[{out:"house",w:100}],                   time:6000,  keepAttrs:["human"] },
+  { inputs:{human:1,wood:1},         variants:[{out:"stick",w:100}],                   time:3000,  keepAttrs:["human"] },
+  { inputs:{human:2,house:1},        variants:[{out:"baby", w:100}],                   time:10000, keepAttrs:["human","building"] },
+  { inputs:{baby:1,house:1},         variants:[{out:"human",w:100}],                   time:10000, keepAttrs:["building"] },
+  { inputs:{wood:2,stick:1},         variants:[{out:"hoe",  w:100}],                   time:4000,  keepAttrs:[] },
+  { inputs:{human:1,apple_tree:1},   variants:[{out:"apple",w:100}],                   time:4000,  keepAttrs:["human"] },
 ];
+function pickOut(r){ const tot=r.variants.reduce((s,v)=>s+v.w,0); let x=Math.random()*tot; for(const v of r.variants){x-=v.w;if(x<=0)return v.out;} return r.variants[0].out; }
 
-// ── パックプール ──────────────────────────────────────────
-const PACK_POOL = [
-  { type:"tree",       w:35 },
-  { type:"rock",       w:35 },
-  { type:"apple_tree", w:25 },
-  { type:"human",      w:5  },
-];
-function drawPack(n) {
-  const total = PACK_POOL.reduce((s,p)=>s+p.w,0);
-  return Array.from({length:n}, () => {
-    let r = Math.random()*total;
-    for (const p of PACK_POOL) { r-=p.w; if(r<=0) return p.type; }
-    return PACK_POOL[0].type;
-  });
+// ── パックプール ──────────────────────────────
+const PACK_A=[{type:"tree",w:35},{type:"rock",w:35},{type:"apple_tree",w:25},{type:"human",w:5}];
+const PACK_B=[{type:"dirt",w:40},{type:"apple_tree",w:30},{type:"seed",w:30}];
+function drawPool(pool,n){
+  const tot=pool.reduce((s,p)=>s+p.w,0);
+  return Array.from({length:n},()=>{ let r=Math.random()*tot; for(const p of pool){r-=p.w;if(r<=0)return p.type;} return pool[0].type; });
 }
 
-// ══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════
 // 状態
-// ══════════════════════════════════════════════════════════
-let cards = [];
-let nextId = 1;
-let progressMap = {}; // groupKey → { progress, recipe }
-let dragging = null;
-let dragOffX = 0, dragOffY = 0;
-let lastTime = 0;
-let initPackOpened = false;
-let pendingPackTypes = [];
+// ════════════════════════════════════════════════
+let cards=[], nextId=1;
 
-function mkCard(type, x, y, extra={}) {
-  const d = def(type);
-  const c = { id:nextId++, type, x, y, w:CW, h:CH, stack:1, uses:0, maxUses:d.maxUses, ...extra };
-  cards.push(c);
-  return c;
+// progressMap: groupKey → {progress, recipe}
+// キーはクラフト開始時点のIDセット。ドラッグ通過で変わらないよう
+// グループ構築時にドラッグ中カードを「透明（除外）」にして判定する。
+let progressMap={};
+
+let dragging=null, dragOffX=0, dragOffY=0;
+let isDragGroup=false, groupCards=[], groupOffsets=[];
+let lastTime=0;
+let initPackOpened=false, pendingPackTypes=[];
+let gameOver=false;
+
+// 日時（パック開封後にスタート）
+let dayStarted=false;
+let dayTimer=0, dayCount=1;
+let mealPhase=false;
+let mealSelectedIds=new Set();
+
+// カメラ
+let camX=0, camY=0, camScale=1;
+const MIN_SC=0.3, MAX_SC=3;
+let pinchActive=false, pinchStartDist=0, pinchStartScale=1;
+let pinchMidW={x:0,y:0}, pinchMidS={x:0,y:0};
+let panActive=false, panStartX=0, panStartY=0, panCamX=0, panCamY=0;
+
+function mkCard(type,x,y,extra={}){
+  const d=def(type);
+  return cards[cards.push({id:nextId++,type,x,y,w:CW,h:CH,stack:1,uses:0,maxUses:d.maxUses,...extra})-1];
+}
+function worldClamp(x,y){ return {x:Math.max(0,Math.min(WORLD_W-CW,x)), y:Math.max(0,Math.min(WORLD_H-CH,y))}; }
+
+// 初期カード
+mkCard("human",200,300);
+
+// ── カメラ変換 ──────────────────────────────
+function s2w(sx,sy){ return {x:(sx-camX)/camScale, y:(sy-camY)/camScale}; }
+
+// カメラをワールド境界内にクランプ
+// ワールドの端がスクリーン外に出すぎないように制限する
+function clampCam(){
+  // ワールド左端 (x=0) がスクリーン右端より右に行かせない
+  // ワールド右端 (x=WORLD_W) がスクリーン左端より左に行かせない
+  const gameH = canvas.height - UI_H;
+  const maxCamX =  100 * camScale;                          // 左端を少し引っ張れる余裕
+  const minCamX = canvas.width  - WORLD_W * camScale - 100 * camScale;
+  const maxCamY =  100 * camScale;
+  const minCamY = gameH - WORLD_H * camScale - 100 * camScale;
+  camX = Math.max(minCamX, Math.min(maxCamX, camX));
+  camY = Math.max(minCamY, Math.min(maxCamY, camY));
 }
 
-// 初期
-mkCard("human", 140, 180);
-
-// ══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════
 // 初期パック
-// ══════════════════════════════════════════════════════════
-document.getElementById("initPackCard").addEventListener("click", () => {
-  if (initPackOpened) return;
-  initPackOpened = true;
-  document.getElementById("initPackCard").style.display = "none";
+// ════════════════════════════════════════════════
+document.getElementById("initPackCard").addEventListener("click",()=>{
+  if(initPackOpened)return;
+  initPackOpened=true;
+  document.getElementById("initPackCard").style.display="none";
   openPackOverlay(["tree","rock","apple_tree"]);
 });
 
-// ── パック開封UI ──────────────────────────────────────────
-function openPackOverlay(types) {
-  pendingPackTypes = types;
-  const cont = document.getElementById("packCards");
-  cont.innerHTML = "";
-  types.forEach((type, i) => {
-    const d = def(type);
-    const el = document.createElement("div");
-    el.className = "pack-card-preview";
-    el.innerHTML = `
-      <div class="pch" style="background:${d.hd};color:${d.light?"#ccc":"#fff"}">${d.label}</div>
-      <div class="pcb" style="background:${d.bg};color:${d.light?"#bbb":"#555"}">${d.label}</div>`;
+function openPackOverlay(types){
+  pendingPackTypes=types;
+  const cont=document.getElementById("packCards");
+  cont.innerHTML="";
+  types.forEach((type,i)=>{
+    const d=def(type),as=attrSt(d.attr);
+    const el=document.createElement("div");
+    el.className="pack-card-preview";
+    el.innerHTML=`<div class="pch" style="background:${as.hd};color:${as.light?"#ddd":"#fff"}">${d.label}</div>
+                  <div class="pcb" style="background:${as.bg};color:${as.light?"#ddd":"#333"}">${d.label}</div>`;
     cont.appendChild(el);
-    setTimeout(() => el.classList.add("pop"), 80 + i * 120);
+    setTimeout(()=>el.classList.add("pop"),80+i*120);
   });
   document.getElementById("packOverlay").classList.add("show");
 }
 
-document.getElementById("packCloseBtn").addEventListener("click", () => {
+document.getElementById("packCloseBtn").addEventListener("click",()=>{
   document.getElementById("packOverlay").classList.remove("show");
-  const cx = canvas.width/2, cy = canvas.height/2 - 30;
-  const sp = 100;
-  const sx = cx - ((pendingPackTypes.length-1)*sp)/2;
-  pendingPackTypes.forEach((type, i) => {
-    const p = findFreePos(sx + i*sp, cy);
-    mkCard(type, p.x, p.y);
+  const wc=s2w(canvas.width/2,canvas.height/2);
+  const sp=110, sx=wc.x-((pendingPackTypes.length-1)*sp)/2;
+  pendingPackTypes.forEach((type,i)=>{
+    const p=findFreePos(sx+i*sp,wc.y-40);
+    mkCard(type,p.x,p.y);
   });
-  pendingPackTypes = [];
+  pendingPackTypes=[];
+  // 初期パックの盤面追加後に日数スタート
+  if(!dayStarted){
+    dayStarted=true;
+    document.getElementById("dayLabel").textContent="1日目";
+  }
 });
 
-// ══════════════════════════════════════════════════════════
-// ユーティリティ
-// ══════════════════════════════════════════════════════════
-function overlap(a, b) {
-  return !(a.x+a.w<=b.x || b.x+b.w<=a.x || a.y+a.h<=b.y || b.y+b.h<=a.y);
+// ════════════════════════════════════════════════
+// 食事ターン
+// ════════════════════════════════════════════════
+function startMealPhase(){
+  mealPhase=true;
+  mealSelectedIds.clear();
+  const humans=cards.filter(c=>c.type==="human"||c.type==="baby");
+  const needed=humans.length;
+  const foodCards=cards.filter(c=>def(c.type).attr==="food");
+
+  document.getElementById("mealInfo").innerHTML=
+    `村人: <b>${needed}</b>人　必要なリンゴ: <b>${needed}</b>個<br>食べさせるリンゴをタップして選択してください。`;
+
+  const list=document.getElementById("mealFoodList");
+  list.innerHTML="";
+  if(foodCards.length===0){
+    list.innerHTML=`<div style="color:#faa;font-size:13px;">食べ物がありません！</div>`;
+  } else {
+    foodCards.forEach(c=>{
+      const d=def(c.type),as=attrSt(d.attr);
+      const el=document.createElement("div");
+      el.className="meal-food-item";
+      el.dataset.cardId=c.id;
+      el.innerHTML=`<div class="mfh" style="background:${as.hd}">${d.label}</div>
+                    <div class="mfb" style="background:${as.bg}">満腹度${d.satiety||0}<br>×${c.stack}</div>`;
+      el.addEventListener("click",()=>toggleMealFood(c,el,needed));
+      list.appendChild(el);
+    });
+  }
+  updateMealBtn(needed);
+  document.getElementById("mealOverlay").classList.add("show");
 }
 
-function connected(start) {
-  const vis = new Set(); const stack=[start]; const grp=[];
-  while(stack.length) {
+function toggleMealFood(card,el,needed){
+  if(mealSelectedIds.has(card.id)){
+    mealSelectedIds.delete(card.id);
+    el.classList.remove("selected");
+  } else {
+    mealSelectedIds.add(card.id);
+    el.classList.add("selected");
+  }
+  updateMealBtn(needed);
+}
+
+function selectedSatiety(){
+  let s=0;
+  for(const id of mealSelectedIds){
+    const c=cards.find(x=>x.id===id);
+    if(c) s+=(def(c.type).satiety||0)*c.stack;
+  }
+  return s;
+}
+
+function updateMealBtn(needed){
+  const btn=document.getElementById("mealConfirmBtn");
+  const foodCards=cards.filter(c=>def(c.type).attr==="food");
+  const sat=selectedSatiety();
+  const sufficient=sat>=needed*2;
+  const noFood=foodCards.length===0;
+  // 常に確定可能（食料不足の場合はその分の村人が死ぬ）
+  btn.disabled=false;
+  const dead=Math.max(0,needed-Math.floor(sat/2));
+  btn.textContent=noFood ? `確定（食料なし・${needed}人死亡）`
+    : sufficient ? `確定 (満腹度 ${sat}/${needed*2})`
+    : `確定 (満腹度 ${sat}/${needed*2}・${dead}人死亡)`;
+}
+
+document.getElementById("mealConfirmBtn").addEventListener("click",()=>{
+  const humans=cards.filter(c=>c.type==="human"||c.type==="baby");
+  const needed=humans.length;
+  const sat=selectedSatiety();
+  const fed=Math.floor(sat/2);
+  const dead=Math.max(0,needed-fed);
+
+  // 選択した食べ物カードを削除
+  for(const id of mealSelectedIds){
+    const idx=cards.findIndex(c=>c.id===id);
+    if(idx>=0) cards.splice(idx,1);
+  }
+  mealSelectedIds.clear();
+
+  // 村人をdead人削除
+  let killed=dead;
+  for(let i=cards.length-1;i>=0&&killed>0;i--){
+    if(cards[i].type==="human"||cards[i].type==="baby"){ cards.splice(i,1); killed--; }
+  }
+
+  document.getElementById("mealOverlay").classList.remove("show");
+  mealPhase=false;
+
+  const left=cards.filter(c=>c.type==="human"||c.type==="baby").length;
+  if(dead>0) toast(`${dead}人の村人が飢えで死亡...`);
+  else toast("全員が食事を終えました！");
+
+  if(left===0) triggerGameOver();
+});
+
+function triggerGameOver(){
+  gameOver=true;
+  document.getElementById("gameoverMsg").textContent=`${dayCount}日目に村人が全滅しました`;
+  document.getElementById("gameoverOverlay").classList.add("show");
+}
+document.getElementById("restartBtn").addEventListener("click",()=>location.reload());
+
+// ════════════════════════════════════════════════
+// ユーティリティ
+// ════════════════════════════════════════════════
+function overlap(a,b){
+  return !(a.x+a.w<=b.x||b.x+b.w<=a.x||a.y+a.h<=b.y||b.y+b.h<=a.y);
+}
+
+// ── クラフト通過リセット修正の核心 ──────────────
+// グループ構築時にドラッグ中カード（単体ドラッグ）を除外して判定する。
+// これにより、ドラッグ中カードが通過してもグループキーが変わらない。
+function connectedExcluding(start, excludeIds){
+  const vis=new Set(), stack=[start], grp=[];
+  while(stack.length){
     const cur=stack.pop();
-    if(vis.has(cur.id)) continue;
+    if(vis.has(cur.id))continue;
     vis.add(cur.id); grp.push(cur);
-    for(const o of cards) if(!vis.has(o.id) && overlap(cur,o)) stack.push(o);
+    for(const o of cards){
+      if(!vis.has(o.id)&&!excludeIds.has(o.id)&&overlap(cur,o)) stack.push(o);
+    }
   }
   return grp;
 }
 
-function allGroups() {
-  const vis = new Set(); const groups=[];
-  for(const c of cards) {
+function connected(start){
+  return connectedExcluding(start, new Set());
+}
+
+// クラフト進行管理用：ドラッグ中カードを除外してグループ構築
+function allGroupsForCraft(){
+  // 単体ドラッグ中のカードIDセット（グループドラッグは除外しない）
+  const excludeIds = (dragging && !isDragGroup) ? new Set([dragging.id]) : new Set();
+  // グループドラッグ中は移動してもクラフト継続
+  const dragGroupIds = isDragGroup ? new Set(groupCards.map(c=>c.id)) : new Set();
+
+  const vis=new Set(), groups=[];
+  for(const c of cards){
     if(vis.has(c.id)) continue;
-    const g = connected(c);
+    if(excludeIds.has(c.id)) continue; // ドラッグ中カード自体はスキップ
+    const g=connectedExcluding(c, excludeIds);
     g.forEach(x=>vis.add(x.id));
     groups.push(g);
   }
   return groups;
 }
 
-function gKey(grp) { return grp.map(c=>c.id).sort((a,b)=>a-b).join(","); }
+function allGroups(){
+  const vis=new Set(), groups=[];
+  for(const c of cards){
+    if(vis.has(c.id))continue;
+    const g=connected(c);
+    g.forEach(x=>vis.add(x.id));
+    groups.push(g);
+  }
+  return groups;
+}
 
-function matchRecipe(grp) {
+function gKey(grp){ return grp.map(c=>c.id).sort((a,b)=>a-b).join(","); }
+
+function matchRecipe(grp){
   const cnt={};
   for(const c of grp) cnt[c.type]=(cnt[c.type]||0)+1;
-  for(const r of RECIPES) {
+  for(const r of RECIPES){
     let ok=true;
     for(const k in r.inputs) if(cnt[k]!==r.inputs[k]){ok=false;break;}
     if(!ok) continue;
@@ -334,359 +527,507 @@ function matchRecipe(grp) {
   return null;
 }
 
-function findFreePos(bx, by) {
-  const angles=[0,Math.PI/2,Math.PI,3*Math.PI/2,Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
-  for(const d of [120,160,200,240]) {
-    for(const a of angles) {
-      const nx=Math.max(0,Math.min(canvas.width-CW, bx+Math.cos(a)*d));
-      const ny=Math.max(0,Math.min(canvas.height-UI_H-CH, by+Math.sin(a)*d));
-      const cand={x:nx,y:ny,w:CW,h:CH};
-      if(cards.every(c=>!overlap(c,cand))) return {x:nx,y:ny};
-    }
-  }
-  return {x:Math.min(bx+130,canvas.width-CW), y:by};
-}
-
-function clampPos(x, y) {
+// 現在のカメラ可視範囲内にワールド座標をクランプ
+function viewClamp(wx, wy){
+  // カメラ可視範囲をワールド座標で計算
+  const gameH = canvas.height - UI_H;
+  const left   = Math.max(0, -camX / camScale);
+  const top    = Math.max(0, -camY / camScale);
+  const right  = Math.min(WORLD_W, (canvas.width  - camX) / camScale);
+  const bottom = Math.min(WORLD_H, (gameH         - camY) / camScale);
   return {
-    x: Math.max(0, Math.min(canvas.width - CW, x)),
-    y: Math.max(0, Math.min(canvas.height - UI_H - CH, y)),
+    x: Math.max(left, Math.min(right  - CW, wx)),
+    y: Math.max(top,  Math.min(bottom - CH, wy)),
   };
 }
 
-// ── エメラルド管理 ────────────────────────────────────────
-function addEmeralds(n, sx, sy) {
-  const em = cards.find(c=>c.type==="emerald");
-  if(em) { em.stack+=n; }
-  else { const c=mkCard("emerald", sx||60, sy||200); c.stack=n; }
-  updateEmDisplay();
-}
-function updateEmDisplay() {
-  const em=cards.find(c=>c.type==="emerald");
-  document.getElementById("emeraldCount").textContent = em?em.stack:0;
+// ワールド境界内クランプ（カード手動移動用・既存位置修正用）
+function worldClamp(wx, wy){
+  return {
+    x: Math.max(0, Math.min(WORLD_W - CW, wx)),
+    y: Math.max(0, Math.min(WORLD_H - CH, wy)),
+  };
 }
 
-// ── トースト ──────────────────────────────────────────────
+function findFreePos(bx,by){
+  const angles=[0,Math.PI/2,Math.PI,3*Math.PI/2,Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
+  for(const d of [120,160,200,260]){
+    for(const a of angles){
+      const p=viewClamp(bx+Math.cos(a)*d, by+Math.sin(a)*d);
+      const cand={x:p.x,y:p.y,w:CW,h:CH};
+      if(cards.every(c=>!overlap(c,cand))) return p;
+    }
+  }
+  return viewClamp(bx+140,by);
+}
+
+function addEmeralds(n,sx,sy){
+  const p=viewClamp(sx||100,sy||100);
+  const em=cards.find(c=>c.type==="emerald");
+  if(em){ em.stack+=n; } else { const c=mkCard("emerald",p.x,p.y); c.stack=n; }
+}
+
 let toastTmr=null;
-function toast(msg) {
+function toast(msg){
   const el=document.getElementById("toast");
   el.textContent=msg; el.classList.add("show");
   clearTimeout(toastTmr);
-  toastTmr=setTimeout(()=>el.classList.remove("show"),2000);
+  toastTmr=setTimeout(()=>el.classList.remove("show"),2500);
 }
 
-// ══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════
 // タッチ
-// ══════════════════════════════════════════════════════════
-function tp(t) { return {x:t.clientX, y:t.clientY-UI_H}; }
+// ════════════════════════════════════════════════
+function touchW(t){ return s2w(t.clientX, t.clientY-UI_H); }
 
-canvas.addEventListener("touchstart", e=>{
-  e.preventDefault();
-  const {x,y}=tp(e.touches[0]);
-  for(let i=cards.length-1;i>=0;i--) {
+function hitCard(wx,wy){
+  for(let i=cards.length-1;i>=0;i--){
     const c=cards[i];
-    if(x>=c.x&&x<=c.x+c.w&&y>=c.y&&y<=c.y+c.h) {
-      dragging=c;
-      dragOffX=x-c.x; dragOffY=y-c.y;
-      cards.splice(i,1); cards.push(c);
-      // ドラッグ開始時にクラフト進行をキャンセル
-      cancelCraftForCard(c);
-      break;
+    if(wx>=c.x&&wx<=c.x+c.w&&wy>=c.y&&wy<=c.y+c.h) return {card:c,idx:i};
+  }
+  return null;
+}
+
+// グループ内で最もYが小さいカード（一番「上」＝スタックの底）
+function bottomCard(grp){ return grp.reduce((a,b)=>a.y<b.y?a:b); }
+
+canvas.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  if(mealPhase||gameOver) return;
+
+  if(e.touches.length===2){
+    dragging=null; isDragGroup=false;
+    pinchActive=true; panActive=false;
+    pinchStartDist=tdist(e.touches[0],e.touches[1]);
+    pinchStartScale=camScale;
+    const mid=tmid(e.touches[0],e.touches[1]);
+    pinchMidS={x:mid.x, y:mid.y-UI_H};
+    pinchMidW=s2w(pinchMidS.x,pinchMidS.y);
+    return;
+  }
+  if(e.touches.length===1&&!pinchActive){
+    const t=e.touches[0];
+    const wpos=touchW(t);
+    const hit=hitCard(wpos.x,wpos.y);
+    if(hit){
+      const {card,idx}=hit;
+      const grp=connected(card);
+
+      if(grp.length>1){
+        // ── グループ移動 ──
+        // タップしたカードより上（Y大きい）のカードを全て一緒に動かす
+        // タップしたカード自身を含め、それ以上のYを持つカードを収集
+        const tapY=card.y;
+        const moveCards=grp.filter(c=>c.y>=tapY);
+        // moveCardsを最前面へ（cards配列内のZオーダー）
+        // 元のZ順を保ちつつ最前面へ移動
+        const notMoved=cards.filter(c=>!moveCards.includes(c));
+        // moveCardsをgrp内のY順（小→大）で並べ直す
+        const sortedMove=[...moveCards].sort((a,b)=>a.y-b.y);
+        cards.splice(0,cards.length,...notMoved,...sortedMove);
+
+        isDragGroup=true;
+        dragging=card;
+        groupCards=[...sortedMove];
+        groupOffsets=sortedMove.map(c=>({dx:wpos.x-c.x,dy:wpos.y-c.y}));
+      } else {
+        // ── 単体移動 ──
+        isDragGroup=false; dragging=card;
+        dragOffX=wpos.x-card.x; dragOffY=wpos.y-card.y;
+        cards.splice(idx,1); cards.push(card);
+        cancelCraftForCard(card);
+      }
+    } else {
+      panActive=true;
+      panStartX=t.clientX; panStartY=t.clientY;
+      panCamX=camX; panCamY=camY;
     }
   }
 },{passive:false});
 
-canvas.addEventListener("touchmove", e=>{
+canvas.addEventListener("touchmove",e=>{
   e.preventDefault();
-  if(!dragging) return;
-  const {x,y}=tp(e.touches[0]);
-  const p=clampPos(x-dragOffX, y-dragOffY);
-  dragging.x=p.x; dragging.y=p.y;
+  if(mealPhase||gameOver) return;
 
-  const rawY=e.touches[0].clientY;
+  if(e.touches.length===2&&pinchActive){
+    const dist=tdist(e.touches[0],e.touches[1]);
+    const newSc=Math.max(MIN_SC,Math.min(MAX_SC,pinchStartScale*(dist/pinchStartDist)));
+    camScale=newSc;
+    camX=pinchMidS.x-pinchMidW.x*camScale;
+    camY=pinchMidS.y-pinchMidW.y*camScale;
+    clampCam();
+    return;
+  }
+  if(!dragging&&panActive&&e.touches.length===1){
+    const t=e.touches[0];
+    camX=panCamX+(t.clientX-panStartX);
+    camY=panCamY+(t.clientY-panStartY);
+    clampCam();
+    return;
+  }
+  if(!dragging) return;
+
+  const t=e.touches[0];
+  const rawY=t.clientY;
+  const wpos=touchW(t);
+
+  if(isDragGroup){
+    groupCards.forEach((c,i)=>{
+      const np=viewClamp(wpos.x-groupOffsets[i].dx, wpos.y-groupOffsets[i].dy);
+      c.x=np.x; c.y=np.y;
+    });
+  } else {
+    const np=viewClamp(wpos.x-dragOffX, wpos.y-dragOffY);
+    dragging.x=np.x; dragging.y=np.y;
+  }
+
   const d=def(dragging.type);
-  document.getElementById("trashZone").classList.toggle("active", rawY<UI_H && !!d.sell);
-  document.getElementById("packShopZone").classList.toggle("active", rawY<UI_H && dragging.type==="emerald");
+  document.getElementById("trashZone").classList.toggle("active",rawY<UI_H&&!!d.sell);
+  document.getElementById("packShopA").classList.toggle("active",rawY<UI_H&&dragging.type==="emerald");
+  document.getElementById("packShopB").classList.toggle("active",rawY<UI_H&&dragging.type==="emerald");
 },{passive:false});
 
-canvas.addEventListener("touchend", e=>{
+canvas.addEventListener("touchend",e=>{
   e.preventDefault();
+  if(e.touches.length<2) pinchActive=false;
+  if(e.touches.length===0) panActive=false;
+  if(mealPhase||gameOver||!dragging) return;
+
   const t=e.changedTouches[0];
   document.getElementById("trashZone").classList.remove("active");
-  document.getElementById("packShopZone").classList.remove("active");
-  if(!dragging) return;
+  document.getElementById("packShopA").classList.remove("active");
+  document.getElementById("packShopB").classList.remove("active");
 
-  if(t.clientY<UI_H) {
+  if(t.clientY<UI_H){
     handleUIZoneDrop(t);
   } else {
-    // 盤面ドロップ → スタック補正 → クラフト開始
+    // 単体・グループ問わず常にスタック補正を試みる
     snapStack(dragging);
     tryStartCraft(dragging);
   }
-
-  dragging=null;
-  updateEmDisplay();
+  dragging=null; isDragGroup=false; groupCards=[]; groupOffsets=[];
 },{passive:false});
 
-function cancelCraftForCard(card) {
-  // このカードが含まれるクラフトをキャンセル
-  for(const key of Object.keys(progressMap)) {
-    const ids=key.split(",").map(Number);
-    if(ids.includes(card.id)) delete progressMap[key];
+function tdist(a,b){ const dx=a.clientX-b.clientX,dy=a.clientY-b.clientY; return Math.sqrt(dx*dx+dy*dy); }
+function tmid(a,b){ return {x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2}; }
+
+function cancelCraftForCard(card){
+  for(const key of Object.keys(progressMap)){
+    if(key.split(",").map(Number).includes(card.id)) delete progressMap[key];
   }
 }
 
-function handleUIZoneDrop(t) {
+function handleUIZoneDrop(t){
   const d=def(dragging.type);
-  if(dragging.type==="emerald") {
-    if(dragging.stack>=3) {
+  const sellCards=isDragGroup?groupCards:[dragging];
+
+  if(dragging.type==="emerald"){
+    const rB=document.getElementById("packShopB").getBoundingClientRect();
+    const pool=(t.clientX>=rB.left&&t.clientX<=rB.right)?PACK_B:PACK_A;
+    if(dragging.stack>=3){
       dragging.stack-=3;
       if(dragging.stack<=0) cards=cards.filter(c=>c!==dragging);
-      updateEmDisplay();
-      openPackOverlay(drawPack(3));
+      openPackOverlay(drawPool(pool,3));
       toast("パックを購入しました！");
-    } else {
-      toast("💎が3個必要です");
+    } else { toast("💎が3個必要です"); }
+    return;
+  }
+
+  let total=0, sx=dragging.x, sy=dragging.y;
+  for(const sc of sellCards){
+    const sd=def(sc.type);
+    if(sd.sell&&sd.sell>0&&sc.type!=="human"){
+      total+=(sd.sell||1)*sc.stack;
+      cards=cards.filter(c=>c!==sc);
     }
-  } else if(d.sell) {
-    const val=(d.sell||1)*dragging.stack;
-    const sx=dragging.x, sy=dragging.y;
-    cards=cards.filter(c=>c!==dragging);
-    addEmeralds(val, sx, sy);
-    toast(`売却: 💎×${val}`);
+  }
+  if(isDragGroup) dragging=null;
+  if(total>0){ addEmeralds(total,sx,sy); toast(`売却: 💎×${total}`); }
+}
+
+// ── スタック位置補正 ──────────────────────────
+function snapStack(dropped){
+  // ドロップ後の現在位置で connected を取得
+  // ただしグループドラッグ中は groupCards 全体が動いているので
+  // dropped と重なっている「groupCards以外」のカードを探す
+  const movingIds = isDragGroup ? new Set(groupCards.map(c=>c.id)) : new Set([dropped.id]);
+
+  // dropped が重なっている外部カード（移動していないカード）を探す
+  const externalOverlap = cards.filter(c=>!movingIds.has(c.id) && overlap(dropped, c));
+  if(externalOverlap.length===0) return; // 何とも重なっていない → 補正不要
+
+  // 外部カードから連結グループを構築（移動カードを除外）
+  const vis=new Set(movingIds);
+  const stackBase=[];
+  const queue=[externalOverlap[0]];
+  while(queue.length){
+    const cur=queue.pop();
+    if(vis.has(cur.id)) continue;
+    vis.add(cur.id); stackBase.push(cur);
+    for(const o of cards) if(!vis.has(o.id)&&overlap(cur,o)) queue.push(o);
+  }
+  if(stackBase.length===0) return;
+
+  // 既存スタックのX基準（Y最小のカード）とY最大
+  stackBase.sort((a,b)=>a.y-b.y);
+  const baseX = stackBase[0].x;
+  const maxY  = Math.max(...stackBase.map(c=>c.y));
+
+  if(isDragGroup){
+    // グループ全体を既存スタックのX・Y最下段の24px下から積み上げ
+    const sorted=[...groupCards].sort((a,b)=>a.y-b.y);
+    sorted.forEach((c,i)=>{
+      const p=viewClamp(baseX, maxY+24+i*24);
+      c.x=p.x; c.y=p.y;
+    });
+  } else {
+    // 単体：既存スタック最下段の24px下
+    const p=viewClamp(baseX, maxY+24);
+    dropped.x=p.x; dropped.y=p.y;
   }
 }
 
-// ── スタック位置補正 ──────────────────────────────────────
-// ドロップ後、重なったグループ内でカード名が見えるよう縦にずらし・横を揃える
-function snapStack(dropped) {
-  const grp = connected(dropped);
-  if(grp.length<=1) return;
-
-  // dropped以外を「既存スタック」とし、最も上にあるカードのxに揃える
-  const others = grp.filter(c=>c!==dropped);
-  if(others.length===0) return;
-
-  // 基準X（一番多いX座標に合わせる、またはothers[0]のx）
-  const baseX = others[0].x;
-
-  // 既存スタックの中で最もyが大きい（一番手前・下）カードを探す
-  const maxY = Math.max(...others.map(c=>c.y));
-
-  // droppedを基準Xに揃え、最下段の24px下に配置
-  const newX = baseX;
-  const newY = maxY + 24;
-  const p = clampPos(newX, newY);
-  dropped.x = p.x;
-  dropped.y = p.y;
-}
-
-// ── クラフト開始（ドロップ時のみ） ───────────────────────
-function tryStartCraft(dropped) {
-  const grp = connected(dropped);
-  const recipe = matchRecipe(grp);
+// ── クラフト開始（ドロップ時のみ） ───────────
+function tryStartCraft(dropped){
+  const grp=connected(dropped);
+  const recipe=matchRecipe(grp);
   if(!recipe) return;
-  const key = gKey(grp);
-  if(progressMap[key]) return; // 既に進行中
-  progressMap[key] = { progress:0, recipe };
+  const key=gKey(grp);
+  if(progressMap[key]) return;
+  progressMap[key]={progress:0,recipe};
 }
 
-// ══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════
 // 更新
-// ══════════════════════════════════════════════════════════
-function update(dt) {
-  const newPM = {};
-  const groupsByKey = {};
-  for(const g of allGroups()) groupsByKey[gKey(g)] = g;
+// ════════════════════════════════════════════════
+function update(dt){
+  if(mealPhase||gameOver) return;
 
-  for(const [key, info] of Object.entries(progressMap)) {
-    const grp = groupsByKey[key];
-    if(!grp) continue; // グループ消滅
+  // 日時タイマー（初期パック開封後のみ）
+  if(dayStarted){
+    dayTimer+=dt;
+    const ratio=Math.min(dayTimer/DAY_MS,1);
+    document.getElementById("dayBar").style.width=(ratio*100)+"%";
+    document.getElementById("dayLabel").textContent=`${dayCount}日目`;
+    if(dayTimer>=DAY_MS){
+      dayTimer=0; dayCount++;
+      startMealPhase();
+      return;
+    }
+  }
 
-    // グループ構成が変化していないか
-    if(gKey(grp)!==key) continue;
+  // ── クラフト更新 ──────────────────────────
+  // ポイント：allGroupsForCraft()でドラッグ中カードを除外してグループを構築
+  // → ドラッグ中カードが通過してもクラフトグループのキーが変わらない
+  const newPM={};
+  const byKey={};
+  for(const g of allGroupsForCraft()) byKey[gKey(g)]=g;
 
-    // ドラッグ中カードが含まれていたらキャンセル
-    if(dragging && grp.some(c=>c.id===dragging.id)) continue;
+  for(const [key,info] of Object.entries(progressMap)){
+    const grp=byKey[key];
+    if(!grp||gKey(grp)!==key) continue;
 
-    const recipe = matchRecipe(grp);
-    if(!recipe || recipe.output!==info.recipe.output) continue;
+    const recipe=matchRecipe(grp);
+    if(!recipe) continue;
+    if(RECIPES.indexOf(recipe)!==RECIPES.indexOf(info.recipe)) continue;
 
-    const np = info.progress + dt;
-    if(np >= recipe.time) {
+    const np=info.progress+dt;
+    if(np>=recipe.time){
       // ── 完成 ──
-      const base = grp[0];
-      const keepAttrs = recipe.keepAttrs || [];
-      const toRemove = [];
+      const keepAttrs=recipe.keepAttrs||[];
+      const toRemove=[], toKeep=[], autoRestart=[];
 
-      for(const c of grp) {
-        const d = def(c.type);
-        if(keepAttrs.includes(d.attr)) {
-          // 残す
-        } else if(d.attr==="resource") {
-          c.uses = (c.uses||0)+1;
-          if(c.maxUses && c.uses>=c.maxUses) toRemove.push(c);
+      // グループをY順（小→大）でソートして基準位置を決める
+      const sortedGrp=[...grp].sort((a,b)=>a.y-b.y);
+      const baseCard=sortedGrp[0]; // Y最小（一番上）が基準
+      const baseX=baseCard.x, baseY=baseCard.y;
+
+      for(const c of grp){
+        const d=def(c.type);
+        if(keepAttrs.includes(d.attr)){
+          toKeep.push(c);
+        } else if(d.attr==="resource"){
+          c.uses=(c.uses||0)+1;
+          if(c.maxUses&&c.uses>=c.maxUses){ toRemove.push(c); }
+          else { toKeep.push(c); autoRestart.push(c); }
+        } else if(d.attr==="tool"){
+          c.uses=(c.uses||0)+1;
+          if(c.maxUses&&c.uses>=c.maxUses){ toRemove.push(c); }
+          else { toKeep.push(c); }
         } else {
           toRemove.push(c);
         }
       }
 
-      cards = cards.filter(c=>!toRemove.includes(c));
+      cards=cards.filter(c=>!toRemove.includes(c));
 
-      // keepするカードをばらす
-      const kept = grp.filter(c=>!toRemove.includes(c));
-      kept.forEach((c,i)=>{
-        const p=clampPos(base.x+i*12, base.y+i*12);
+      // keepカードをスタック形式で整列（横揃え・縦24pxずつ）
+      toKeep.forEach((c,i)=>{
+        const p=worldClamp(baseX, baseY+i*24);
         c.x=p.x; c.y=p.y;
       });
 
       // 出力カード生成
-      const pos = findFreePos(base.x, base.y);
-      mkCard(recipe.output, pos.x, pos.y);
-      updateEmDisplay();
+      const outType=pickOut(recipe);
+      const pos=findFreePos(baseX,baseY);
+      mkCard(outType,pos.x,pos.y);
+
+      // 資源が残っている場合 → 自動再開
+      if(autoRestart.length>0){
+        setTimeout(()=>{
+          // 現在も盤面に残っているkeepカードを確認
+          const survivors=toKeep.filter(c=>cards.includes(c));
+          if(survivors.length===0) return;
+          // スタック形式で再整列（横揃え・縦24pxずつ）
+          const sortedS=[...survivors].sort((a,b)=>a.y-b.y);
+          const refX=sortedS[0].x, refY=sortedS[0].y;
+          sortedS.forEach((c,i)=>{
+            const p=worldClamp(refX, refY+i*24);
+            c.x=p.x; c.y=p.y;
+          });
+          // 再グループ化してクラフト開始
+          const newGrp=connected(survivors[0]);
+          const newRecipe=matchRecipe(newGrp);
+          if(newRecipe){
+            const nk=gKey(newGrp);
+            if(!progressMap[nk]) progressMap[nk]={progress:0,recipe:newRecipe};
+          }
+        },80);
+      }
     } else {
-      newPM[key] = { progress:np, recipe };
+      newPM[key]={progress:np,recipe};
     }
   }
-
-  progressMap = newPM;
+  progressMap=newPM;
 }
 
-// ══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════
 // 描画
-// ══════════════════════════════════════════════════════════
-function drawCard(c, craftProg, craftTotal) {
-  const d = def(c.type);
-  const {x,y} = c;
-  const isDrag = c===dragging;
+// ════════════════════════════════════════════════
+function drawCard(c,craftProg,craftTotal){
+  const d=def(c.type), as=attrSt(d.attr);
+  const {x,y}=c;
+  const isDrag=(c===dragging)||(isDragGroup&&groupCards.includes(c));
   const r=8;
 
   ctx.save();
-  if(isDrag) {
-    ctx.shadowColor="rgba(0,0,0,0.45)";
-    ctx.shadowBlur=14;
-    ctx.shadowOffsetY=5;
-  }
+  if(isDrag){ ctx.shadowColor="rgba(0,0,0,.45)"; ctx.shadowBlur=14; ctx.shadowOffsetY=5; }
 
-  // 本体
   ctx.beginPath(); ctx.roundRect(x,y,CW,CH,r);
-  ctx.fillStyle=d.bg; ctx.fill();
+  ctx.fillStyle=as.bg; ctx.fill();
 
-  // ヘッダー
   ctx.beginPath(); ctx.roundRect(x,y,CW,24,[r,r,0,0]);
-  ctx.fillStyle=d.hd; ctx.fill();
+  ctx.fillStyle=as.hd; ctx.fill();
 
-  // カード名
-  ctx.fillStyle=d.light?"#ddd":"#fff";
-  ctx.font="bold 11px Georgia";
-  ctx.textAlign="center";
-  ctx.fillText(d.label, x+CW/2, y+16);
+  ctx.fillStyle=as.light?"#eee":"#fff";
+  ctx.font="bold 11px Georgia"; ctx.textAlign="center";
+  ctx.fillText(d.label,x+CW/2,y+16);
 
-  // 属性バッジ（左）
-  const al=ATTR_LABEL[d.attr]||"";
-  const ac=ATTR_COLOR[d.attr]||"#888";
-  ctx.fillStyle=ac;
+  // 属性バッジ
+  ctx.fillStyle="rgba(0,0,0,.2)";
   ctx.beginPath(); ctx.roundRect(x+3,y+27,30,13,3); ctx.fill();
-  ctx.fillStyle="#fff"; ctx.font="8px Georgia"; ctx.textAlign="center";
-  ctx.fillText(al, x+18, y+36);
+  ctx.fillStyle=as.light?"#ddd":"#fff";
+  ctx.font="8px Georgia"; ctx.textAlign="center";
+  ctx.fillText(as.label,x+18,y+37);
 
-  // 売却値（右）
-  if(d.sell) {
-    ctx.fillStyle="rgba(0,0,0,0.18)";
+  // 売却値
+  if(d.sell&&d.sell>0){
+    ctx.fillStyle="rgba(0,0,0,.18)";
     ctx.beginPath(); ctx.roundRect(x+CW-34,y+27,31,13,3); ctx.fill();
-    ctx.fillStyle=d.light?"#9de":"#555";
+    ctx.fillStyle=as.light?"#dde":"#fff";
     ctx.font="9px Georgia"; ctx.textAlign="center";
-    ctx.fillText("💎"+d.sell, x+CW-18, y+37);
+    ctx.fillText("💎"+d.sell,x+CW-18,y+37);
   }
 
-  // 資源の残り使用回数バー
-  if(d.attr==="resource" && d.maxUses) {
+  // 食べ物：満腹度
+  if(d.attr==="food"&&d.satiety){
+    ctx.fillStyle="rgba(255,255,255,.2)";
+    ctx.beginPath(); ctx.roundRect(x+3,y+43,CW-6,14,3); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.font="bold 10px Georgia"; ctx.textAlign="center";
+    ctx.fillText("満腹度 "+d.satiety,x+CW/2,y+53);
+  }
+
+  // 道具耐久バー
+  if(d.attr==="tool"&&d.maxUses){
     const used=c.uses||0;
-    const ratio=(d.maxUses-used)/d.maxUses;
-    const bx=x+4,by=y+44,bw=CW-8,bh=8;
-    ctx.fillStyle="rgba(0,0,0,0.2)";
+    const ratio=Math.max(0,(d.maxUses-used)/d.maxUses);
+    const bx=x+4,by=y+44,bw=CW-8,bh=7;
+    ctx.fillStyle="rgba(0,0,0,.25)";
     ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,3); ctx.fill();
-    ctx.fillStyle="#7de87a";
+    const rv=Math.floor(255*(1-ratio)),gv=Math.floor(200*ratio);
+    ctx.fillStyle=`rgb(${rv},${gv},60)`;
     ctx.beginPath(); ctx.roundRect(bx,by,bw*ratio,bh,3); ctx.fill();
-    ctx.fillStyle=d.light?"#ccc":"#444";
-    ctx.font="8px sans-serif"; ctx.textAlign="center";
-    ctx.fillText(`残${d.maxUses-used}/${d.maxUses}`, x+CW/2, by+7);
   }
 
   // スタック数
-  if(c.stack>1) {
-    ctx.fillStyle="rgba(0,0,0,0.6)";
+  if(c.stack>1){
+    ctx.fillStyle="rgba(0,0,0,.6)";
     ctx.beginPath(); ctx.roundRect(x+CW-28,y+CH-22,25,18,4); ctx.fill();
     ctx.fillStyle="#fff"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
-    ctx.fillText("×"+c.stack, x+CW-15, y+CH-9);
+    ctx.fillText("×"+c.stack,x+CW-15,y+CH-9);
   }
 
-  // クラフト進行バー
-  if(craftTotal>0) {
+  // クラフト進行バー（秒数なし）
+  if(craftTotal>0){
     const ratio=Math.min(craftProg/craftTotal,1);
-    const bx=x+4, by=y+CH-14, bw=CW-8, bh=8;
-    ctx.fillStyle="rgba(0,0,0,0.3)";
+    const bx=x+4,by=y+CH-12,bw=CW-8,bh=7;
+    ctx.fillStyle="rgba(0,0,0,.3)";
     ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,4); ctx.fill();
     const g=ctx.createLinearGradient(bx,0,bx+bw,0);
     g.addColorStop(0,"#4ecdc4"); g.addColorStop(1,"#45b7d1");
     ctx.fillStyle=g;
     ctx.beginPath(); ctx.roundRect(bx,by,bw*ratio,bh,4); ctx.fill();
-    // 残り秒
-    const rem=Math.ceil((craftTotal-craftProg)/1000);
-    ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.font="8px sans-serif"; ctx.textAlign="center";
-    ctx.fillText(rem+"s", x+CW/2, by-1);
   }
 
-  // ドラッグ中アウトライン
-  if(isDrag) {
+  if(isDrag){
     ctx.strokeStyle="#e8b84b"; ctx.lineWidth=2;
     ctx.beginPath(); ctx.roundRect(x,y,CW,CH,r); ctx.stroke();
   }
-
   ctx.restore();
 }
 
-function draw() {
+function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // 背景（淡い緑）
   ctx.fillStyle="#b8e0b2";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
+  ctx.save();
+  ctx.translate(camX,UI_H+camY);
+  ctx.scale(camScale,camScale);
+
   // ドット格子
-  ctx.fillStyle="rgba(0,80,0,0.06)";
-  for(let gx=0;gx<canvas.width;gx+=40)
-    for(let gy=UI_H;gy<canvas.height;gy+=40) {
+  const step=40;
+  const tl=s2w(0,0), br=s2w(canvas.width,canvas.height);
+  ctx.fillStyle="rgba(0,80,0,.06)";
+  for(let gx=Math.floor(tl.x/step)*step;gx<=br.x;gx+=step)
+    for(let gy=Math.floor(tl.y/step)*step;gy<=br.y;gy+=step){
       ctx.beginPath(); ctx.arc(gx,gy,1.2,0,Math.PI*2); ctx.fill();
     }
 
-  // カードID→クラフト情報
+  // クラフト情報マップ
   const ci=new Map();
-  for(const [key,info] of Object.entries(progressMap)) {
+  for(const [key,info] of Object.entries(progressMap))
     for(const id of key.split(",").map(Number))
       ci.set(id,{progress:info.progress,total:info.recipe.time});
-  }
 
-  ctx.save();
-  ctx.translate(0,UI_H);
-  for(const c of cards) {
+  for(const c of cards){
     const inf=ci.get(c.id);
-    drawCard(c, inf?inf.progress:0, inf?inf.total:0);
+    drawCard(c,inf?inf.progress:0,inf?inf.total:0);
   }
   ctx.restore();
 }
 
-// ══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════
 // ループ
-// ══════════════════════════════════════════════════════════
-function loop(t) {
+// ════════════════════════════════════════════════
+function loop(t){
   const dt=Math.min(t-lastTime,100);
   lastTime=t;
   update(dt);
   draw();
   requestAnimationFrame(loop);
 }
-requestAnimationFrame(t=>{ lastTime=t; requestAnimationFrame(loop); });
+requestAnimationFrame(t=>{lastTime=t;requestAnimationFrame(loop);});
 </script>
 </body>
 </html>
