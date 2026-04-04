@@ -4,7 +4,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Card Craft</title>
 <style>
-* { box-sizing:border-box; margin:0; padding:0; font-family:'Georgia',serif; }
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
+* { box-sizing:border-box; margin:0; padding:0;
+    font-family:'Hiragino Maru Gothic ProN','Hiragino Maru Gothic Pro','BIZ UDPGothic','Nunito',sans-serif; }
 body { overflow:hidden; background:#b8e0b2; touch-action:none; }
 canvas { display:block; }
 
@@ -32,7 +34,7 @@ canvas { display:block; }
 #gameoverOverlay h1, #gameoverOverlay p, #restartBtn,
 #initPackCard, #dayLabel, #toast,
 #battleOverlay h2, #battleLog, .battle-card {
-  font-family:'Georgia',serif;
+  font-family:'Hiragino Maru Gothic ProN','Hiragino Maru Gothic Pro','BIZ UDPGothic','Nunito',sans-serif;
 }
 #packShopsRow { display:flex; gap:5px; flex:1; justify-content:center; }
 .pack-shop-zone {
@@ -40,9 +42,9 @@ canvas { display:block; }
   flex-direction:column; gap:1px; font-size:10px; border-radius:6px;
   padding:2px 7px; height:36px; white-space:nowrap; line-height:1.3;
 }
-.pack-shop-zone .ps-name { font-weight:bold; font-size:11px; font-family:'Georgia',serif; }
+.pack-shop-zone .ps-name { font-weight:bold; font-size:11px; font-family:'Hiragino Maru Gothic ProN','BIZ UDPGothic','Nunito',sans-serif; }
 .pack-shop-zone .ps-cost { font-size:9px; opacity:.8; }
-.pack-shop-zone .ps-num  { font-family:'Georgia',serif; }
+.pack-shop-zone .ps-num  { font-family:'Hiragino Maru Gothic ProN','BIZ UDPGothic','Nunito',sans-serif; }
 .emoji { font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
 #packShopA { color:#e8d080; background:rgba(232,184,75,.1); border:1px dashed rgba(232,184,75,.5); }
 #packShopA.active { background:rgba(232,184,75,.35); border-color:#e8b84b; }
@@ -94,7 +96,7 @@ canvas { display:block; }
 .pch { height:24px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:bold; }
 .pcb { flex:1; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold; padding:4px; }
 #packCloseBtn {
-  padding:10px 32px; font-size:15px; font-family:Georgia,serif;
+  padding:10px 32px; font-size:15px;
   background:linear-gradient(135deg,#e8b84b,#c49a2a);
   color:#1a1a1a; border:none; border-radius:8px; font-weight:bold; cursor:pointer;
 }
@@ -121,7 +123,7 @@ canvas { display:block; }
 .meal-food-item .mfh { height:22px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold; color:#fff; }
 .meal-food-item .mfb { flex:1; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:bold; padding:3px; text-align:center; color:#fff; }
 #mealConfirmBtn {
-  padding:10px 28px; font-size:15px; font-family:Georgia,serif;
+  padding:10px 28px; font-size:15px;
   background:linear-gradient(135deg,#f0c040,#c09020);
   color:#1a1a1a; border:none; border-radius:8px; font-weight:bold; cursor:pointer;
 }
@@ -136,7 +138,7 @@ canvas { display:block; }
 #gameoverOverlay h1 { color:#ff6060; font-size:32px; letter-spacing:3px; }
 #gameoverOverlay p { color:#ccc; font-size:14px; text-align:center; }
 #restartBtn {
-  padding:12px 36px; font-size:16px; font-family:Georgia,serif;
+  padding:12px 36px; font-size:16px;
   background:linear-gradient(135deg,#e8b84b,#c49a2a);
   color:#1a1a1a; border:none; border-radius:8px; font-weight:bold; cursor:pointer;
 }
@@ -173,6 +175,57 @@ canvas { display:block; }
 #battleLog p.result-win  { color:#80ff80; font-weight:bold; }
 #battleLog p.result-lose { color:#ff6060; font-weight:bold; }
 
+/* 売却フェーズバナー */
+#sellBanner {
+  display:none; position:fixed; top:60px; left:0; width:100%; z-index:15;
+  background:rgba(180,80,0,.92); color:#fff; padding:6px 14px;
+  font-size:12px; font-weight:bold; text-align:center;
+  border-bottom:2px solid #f0a040;
+}
+#sellBanner.show { display:block; }
+
+/* 速度・一時停止ボタン */
+#speedBtns {
+  position:fixed; bottom:16px; left:16px;
+  display:flex; gap:6px; z-index:20;
+}
+.speed-btn {
+  width:40px; height:40px; border-radius:20px;
+  background:rgba(20,20,40,.82); border:1px solid rgba(255,255,255,.3);
+  color:#fff; font-size:14px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  user-select:none;
+}
+.speed-btn.active { background:rgba(232,184,75,.6); border-color:#e8b84b; }
+
+/* クエストパネル */
+#questBtn {
+  position:fixed; bottom:16px; right:16px;
+  width:48px; height:48px; border-radius:24px;
+  background:rgba(20,20,40,.88); border:2px solid #e8b84b;
+  color:#e8b84b; font-size:20px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  z-index:20; user-select:none;
+}
+#questPanel {
+  display:none; position:fixed; right:0; top:60px;
+  width:260px; max-width:90vw; height:calc(100vh - 60px);
+  background:rgba(16,16,32,.95); border-left:2px solid #e8b84b;
+  z-index:25; overflow-y:auto; padding:12px;
+  flex-direction:column; gap:6px;
+}
+#questPanel.show { display:flex; }
+#questPanel h3 { color:#e8b84b; font-size:14px; margin-bottom:6px; }
+.quest-item {
+  display:flex; align-items:flex-start; gap:8px;
+  padding:7px 8px; border-radius:6px;
+  background:rgba(255,255,255,.05);
+  font-size:11px; color:#ccc; line-height:1.4;
+}
+.quest-item.done { color:#888; }
+.quest-item.done .q-check { color:#4caf50; }
+.quest-check { width:16px; flex-shrink:0; font-size:13px; }
+
 #toast {
   position:fixed; top:68px; left:50%; transform:translateX(-50%);
   background:rgba(20,20,40,.9); color:#fff; font-size:12px;
@@ -194,6 +247,7 @@ canvas { display:block; }
       <span class="ps-name">農業パック</span><span class="ps-cost"><span class="emoji">💎</span><span class="ps-num">×4</span></span>
     </div>
   </div>
+  <div id="cardCount" style="color:#ccc;font-size:11px;white-space:nowrap;flex-shrink:0;">0/20</div>
 </div>
 
 <div id="dayBarWrap"><div id="dayBar"></div></div>
@@ -227,7 +281,7 @@ canvas { display:block; }
       <div class="bc-hpbar-wrap"><div class="bc-hpbar" id="bc-human-bar" style="width:100%"></div></div>
       <div class="bc-stats" id="bc-human-stats">攻3 防1</div>
     </div>
-    <div style="color:#ff8080;font-size:22px;font-family:Georgia,serif;">VS</div>
+    <div style="color:#ff8080;font-size:22px;">VS</div>
     <div class="battle-card">
       <div class="bc-name" id="bc-mob-name">敵</div>
       <div class="bc-hp"   id="bc-mob-hp">HP 4/4</div>
@@ -236,6 +290,25 @@ canvas { display:block; }
     </div>
   </div>
   <div id="battleLog"></div>
+</div>
+
+<div id="sellBanner">
+  📦 カード超過！ <span id="sellBannerText"></span>　UIバーに売却してください
+</div>
+
+<div id="speedBtns">
+  <div class="speed-btn" id="btnPause" title="一時停止">⏸</div>
+  <div class="speed-btn active" id="btn1x" title="1倍速">×1</div>
+  <div class="speed-btn" id="btn3x" title="3倍速">×3</div>
+</div>
+
+<div id="questBtn" title="クエスト">📋</div>
+<div id="questPanel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+    <h3 style="color:#e8b84b;font-size:14px;">📋 クエスト</h3>
+    <button id="questCloseBtn" style="background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;line-height:1;">×</button>
+  </div>
+  <div id="questList"></div>
 </div>
 
 <div id="gameoverOverlay">
@@ -270,6 +343,7 @@ const ATTR_STYLE = {
   tool:     { hd:"#5a3070", bg:"#9060a8", label:"道具",   light:true  },
   food:     { hd:"#8a3030", bg:"#c86060", label:"食べ物", light:false },
   hostile:  { hd:"#6a1a1a", bg:"#aa3a3a", label:"敵",     light:true  },
+  friendly: { hd:"#2a5a2a", bg:"#5a9a5a", label:"友好",   light:false },
 };
 function attrSt(attr){ return ATTR_STYLE[attr]||{hd:"#888",bg:"#bbb",label:attr,light:false}; }
 
@@ -298,8 +372,10 @@ const DEFS = {
   raw_meat:   { label:"生肉",       attr:"food",     sell:3,    maxUses:null, satiety:0 },
   grilled_meat:{label:"焼いた肉",   attr:"food",     sell:3,    maxUses:null, satiety:3 },
   bread:      { label:"パン",       attr:"food",     sell:3,    maxUses:null, satiety:5 },
-  rabbit:     { label:"うさぎ",     attr:"hostile",  sell:null, maxUses:null, maxHp:4, atk:2, def:0,
+  rabbit:     { label:"ウサギ",     attr:"hostile",  sell:null, maxUses:null, maxHp:4, atk:2, def:0,
                 drop:[{type:"raw_meat",w:85},{type:"carrot",w:15}] },
+  tamed_rabbit:{ label:"うさぎ",    attr:"friendly", sell:2,    maxUses:null },
+  warehouse:   { label:"倉庫",      attr:"building", sell:3,    maxUses:null, cardSlots:4 },
 };
 function def(type){ return DEFS[type]||{label:type,attr:"material",sell:1,maxUses:null}; }
 
@@ -323,11 +399,12 @@ const RECIPES = [
   { inputs:{flour:2},                variants:[{out:"bread",w:100}],                   time:10,  keepAttrs:[] },
   { inputs:{bonfire:1,raw_meat:1},   variants:[{out:"grilled_meat",w:100}],            time:50,  keepAttrs:["building"] },
   { inputs:{dirt:2,soil:1,stone:1,human:1},variants:[{out:"farm", w:100}],             time:30,  keepAttrs:["human"] },
+  { inputs:{human:1,wood:1,stone:1,stick:1},variants:[{out:"warehouse",w:100}],        time:40,  keepAttrs:["human"] },
 ];
 function pickOut(r){ const tot=r.variants.reduce((s,v)=>s+v.w,0); let x=Math.random()*tot; for(const v of r.variants){x-=v.w;if(x<=0)return v.out;} return r.variants[0].out; }
 
 // ── パックプール ──────────────────────────────
-const PACK_A=[{type:"tree",w:11},{type:"rock",w:11},{type:"apple_tree",w:7},{type:"wood",w:16},{type:"stone",w:16},{type:"dirt",w:5},{type:"apple",w:5},{type:"flint",w:12},{type:"human",w:3},{type:"rabbit",w:10},{type:"seed",w:2},{type:"carrot",w:2}];
+const PACK_A=[{type:"tree",w:12},{type:"rock",w:12},{type:"apple_tree",w:7},{type:"wood",w:16},{type:"stone",w:16},{type:"dirt",w:5},{type:"apple",w:5},{type:"flint",w:12},{type:"human",w:3},{type:"rabbit",w:8},{type:"seed",w:2},{type:"carrot",w:2}];
 const PACK_B=[{type:"dirt",w:40},{type:"apple_tree",w:30},{type:"seed",w:30}];
 function drawPool(pool,n){
   const tot=pool.reduce((s,p)=>s+p.w,0);
@@ -411,6 +488,7 @@ document.getElementById("initPackCard").addEventListener("click",()=>{
   initPackOpened=true;
   document.getElementById("initPackCard").style.display="none";
   openPackOverlay(["tree","rock","apple_tree"]);
+  completeQuest("q1");
 });
 
 function openPackOverlay(types){
@@ -480,7 +558,7 @@ function startMealPhase(){
   // おまかせボタン
   const autoBtn=document.createElement("button");
   autoBtn.textContent="おまかせ";
-  autoBtn.style.cssText="padding:6px 14px;font-size:13px;font-family:Georgia,serif;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;cursor:pointer;margin-bottom:4px;display:block;";
+  autoBtn.style.cssText="padding:6px 14px;font-size:13px;font-family:'Hiragino Maru Gothic ProN','BIZ UDPGothic','Nunito',sans-serif;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;cursor:pointer;margin-bottom:4px;display:block;";
   autoBtn.addEventListener("click",()=>autoAssignFood(needed));
   list.appendChild(autoBtn);
 
@@ -546,6 +624,7 @@ function autoAssignFood(needed){
   let satRemain=needed*2;
   for(const c of ordered){
     if(satRemain<=0) break;
+    if(cardActualSat(c)<=0) continue; // 満腹度0はスキップ
     mealSelectedIds.add(c.id);
     satRemain-=cardActualSat(c);
   }
@@ -644,8 +723,96 @@ document.getElementById("mealConfirmBtn").addEventListener("click",()=>{
   const left=cards.filter(c=>c.type==="human"||c.type==="baby").length;
   if(dead>0) toast(`${dead}人の村人が飢えで死亡...`);
   else toast("全員が食事を終えました！");
-
+  if(dayCount>=2) completeQuest("q2"); // 1日目終了後の食事
   if(left===0) triggerGameOver();
+  else checkCardLimit();
+});
+
+function checkCardLimit(){
+  const lim=cardLimit();
+  if(cards.length<=lim){ hideSellBanner(); return; }
+  startSellPhase(cards.length-lim);
+}
+
+// ── 売却フェーズ（バナーのみ、盤面で売却） ──────
+function startSellPhase(mustSell){
+  sellPhase=true;
+  sellMustSell=mustSell;
+  updateSellBanner();
+  document.getElementById("sellBanner").classList.add("show");
+}
+function updateSellBanner(){
+  const lim=cardLimit();
+  const over=cards.length-lim;
+  if(over<=0){ endSellPhase(); return; }
+  document.getElementById("sellBannerText").textContent=`あと${over}枚売却が必要`;
+}
+function endSellPhase(){
+  sellPhase=false;
+  hideSellBanner();
+  updateCardCount();
+}
+function hideSellBanner(){
+  sellPhase=false;
+  document.getElementById("sellBanner").classList.remove("show");
+}
+
+// ── 速度制御 ──────────────────────────────────
+let gameSpeed=1; // 0=停止, 1=通常, 3=3倍
+
+document.getElementById("btnPause").addEventListener("click",()=>setSpeed(0));
+document.getElementById("btn1x").addEventListener("click",()=>setSpeed(1));
+document.getElementById("btn3x").addEventListener("click",()=>setSpeed(3));
+
+function setSpeed(s){
+  gameSpeed=s;
+  document.getElementById("btnPause").classList.toggle("active",s===0);
+  document.getElementById("btn1x").classList.toggle("active",s===1);
+  document.getElementById("btn3x").classList.toggle("active",s===3);
+}
+
+// ── クエストシステム ──────────────────────────
+const QUESTS=[
+  { id:"q1",  text:"冒険の始まりパックを開封しよう",     done:false, visible:true,  deps:[]     },
+  { id:"q2",  text:"食料を確保し、一日目を生き延びよう", done:false, visible:false, deps:["q1"] },
+  { id:"q3",  text:"木を伐採して木材を入手しよう",       done:false, visible:false, deps:["q1"] },
+  { id:"q4",  text:"カードを売却してエメラルドを入手しよう",done:false,visible:false,deps:["q1"] },
+  { id:"q5",  text:"土からリンゴの木を育てよう",         done:false, visible:false, deps:["q1"] },
+  { id:"q6",  text:"耕地で作物を育てよう",               done:false, visible:false, deps:["q1"] },
+  { id:"q7",  text:"戦闘に勝利しよう",                   done:false, visible:false, deps:["q1"] },
+  { id:"q8",  text:"ウサギを手なずけよう",               done:false, visible:false, deps:["q1"] },
+  { id:"q9",  text:"村人を増やそう（赤ちゃんを入手）",   done:false, visible:false, deps:["q1"] },
+  { id:"q10", text:"木材を加工して木の棒を入手しよう",   done:false, visible:false, deps:["q3"] },
+];
+
+function completeQuest(id){
+  const q=QUESTS.find(x=>x.id===id);
+  if(!q||q.done) return;
+  q.done=true;
+  toast(`クエスト達成：${q.text}`);
+  // 依存するクエストを出現させる
+  QUESTS.forEach(x=>{ if(x.deps.includes(id)) x.visible=true; });
+  renderQuestList();
+}
+
+function renderQuestList(){
+  const list=document.getElementById("questList");
+  list.innerHTML="";
+  QUESTS.filter(q=>q.visible).forEach(q=>{
+    const el=document.createElement("div");
+    el.className="quest-item"+(q.done?" done":"");
+    el.innerHTML=`<span class="quest-check q-check">${q.done?"✅":"◻"}</span><span>${q.text}</span>`;
+    list.appendChild(el);
+  });
+}
+
+document.getElementById("questBtn").addEventListener("click",()=>{
+  const p=document.getElementById("questPanel");
+  p.classList.toggle("show");
+  renderQuestList();
+});
+document.getElementById("questCloseBtn").addEventListener("click",()=>{
+  document.getElementById("questPanel").classList.remove("show");
 });
 
 function triggerGameOver(){
@@ -653,6 +820,21 @@ function triggerGameOver(){
   document.getElementById("gameoverMsg").textContent=`${dayCount}日目に村人が全滅しました`;
   document.getElementById("gameoverOverlay").classList.add("show");
 }
+const BASE_CARD_LIMIT=20;
+let sellPhase=false;
+let sellMustSell=0;
+
+function cardLimit(){
+  const extra=cards.filter(c=>def(c.type).cardSlots).reduce((s,c)=>s+(def(c.type).cardSlots||0),0);
+  return BASE_CARD_LIMIT+extra;
+}
+function updateCardCount(){
+  const lim=cardLimit();
+  const cnt=cards.length;
+  const el=document.getElementById("cardCount");
+  if(el){ el.textContent=`${cnt}/${lim}`; el.style.color=cnt>=lim?"#ff8080":"#ccc"; }
+}
+
 document.getElementById("restartBtn").addEventListener("click",()=>location.reload());
 
 // ════════════════════════════════════════════════
@@ -671,7 +853,9 @@ function startBattle(humanCard, mobCard){
   const hMaxHP=hd.maxHp||10, mMaxHP=md.maxHp||4;
   let hHP=humanCard.hp, mHP=mobCard.hp;
 
-  // UI初期化
+  // 命中率・回避率・クリティカル率（基本値）
+  const HIT=0.85, EVADE=0.15, CRIT=0.15, CRIT_MULT=1.8;
+
   const log=document.getElementById("battleLog");
   log.innerHTML="";
   document.getElementById("bc-human-name").textContent=hd.label;
@@ -683,8 +867,7 @@ function startBattle(humanCard, mobCard){
   function updateUI(){
     document.getElementById("bc-human-hp").textContent=`HP ${Math.max(0,hHP)}/${hMaxHP}`;
     document.getElementById("bc-mob-hp").textContent=`HP ${Math.max(0,mHP)}/${mMaxHP}`;
-    const hRatio=Math.max(0,hHP/hMaxHP);
-    const mRatio=Math.max(0,mHP/mMaxHP);
+    const hRatio=Math.max(0,hHP/hMaxHP), mRatio=Math.max(0,mHP/mMaxHP);
     const hBar=document.getElementById("bc-human-bar");
     const mBar=document.getElementById("bc-mob-bar");
     hBar.style.width=`${hRatio*100}%`;
@@ -694,42 +877,62 @@ function startBattle(humanCard, mobCard){
   }
   updateUI();
 
-  function addLog(text, cls=""){
+  function addLog(text,cls=""){
     const p=document.createElement("p");
     if(cls) p.className=cls;
-    p.textContent=text;
-    log.appendChild(p);
+    p.textContent=text; log.appendChild(p);
     log.scrollTop=log.scrollHeight;
+  }
+
+  function calcDmg(atk,def){
+    // 命中判定
+    if(Math.random()>HIT) return {dmg:0,evaded:true,crit:false};
+    // 相手の回避判定
+    if(Math.random()<EVADE) return {dmg:0,evaded:true,crit:false};
+    const base=Math.max(1,atk-def);
+    const crit=Math.random()<CRIT;
+    const dmg=crit?Math.ceil(base*CRIT_MULT):base;
+    return {dmg,evaded:false,crit};
   }
 
   function doTurn(){
     // 人間の攻撃
-    const hDmg=Math.max(1,hAtk-mDef);
-    mHP-=hDmg;
-    addLog(`${hd.label}の攻撃！ ${md.label}に${hDmg}ダメージ`,"atk-human");
+    const h=calcDmg(hAtk,mDef);
+    if(h.evaded){
+      addLog(`${md.label}は回避！`,"atk-human");
+    } else {
+      mHP-=h.dmg;
+      const tag=h.crit?" ★クリティカル！":"";
+      addLog(`${hd.label}の攻撃！ ${h.dmg}ダメージ${tag}`,"atk-human");
+    }
     updateUI();
     if(mHP<=0){
       addLog(`${md.label}を倒した！`,"result-win");
       humanCard.hp=Math.max(1,hHP);
-      setTimeout(()=>endBattle(humanCard,mobCard,true),800);
+      setTimeout(()=>endBattle(humanCard,mobCard,true),1200);
       return;
     }
-    // 敵の攻撃
+    // 敵の攻撃（1.4秒後）
     setTimeout(()=>{
-      const mDmg=Math.max(1,mAtk-hDef);
-      hHP-=mDmg;
-      addLog(`${md.label}の攻撃！ ${hd.label}に${mDmg}ダメージ`,"atk-mob");
+      const m=calcDmg(mAtk,hDef);
+      if(m.evaded){
+        addLog(`${hd.label}は回避！`,"atk-mob");
+      } else {
+        hHP-=m.dmg;
+        const tag=m.crit?" ★クリティカル！":"";
+        addLog(`${md.label}の攻撃！ ${m.dmg}ダメージ${tag}`,"atk-mob");
+      }
       updateUI();
       if(hHP<=0){
         addLog(`${hd.label}は倒れた…`,"result-lose");
         humanCard.hp=0;
-        setTimeout(()=>endBattle(humanCard,mobCard,false),800);
+        setTimeout(()=>endBattle(humanCard,mobCard,false),1200);
         return;
       }
-      setTimeout(doTurn,700);
-    },500);
+      setTimeout(doTurn,1400);
+    },1000);
   }
-  setTimeout(doTurn,400);
+  setTimeout(doTurn,600);
 }
 
 function endBattle(humanCard, mobCard, won){
@@ -748,6 +951,7 @@ function endBattle(humanCard, mobCard, won){
     } else {
       toast(`${def(mobCard.type).label}を倒した！`);
     }
+    completeQuest("q7");
   } else {
     cards=cards.filter(c=>c!==humanCard);
     toast(`${def(humanCard.type).label}は力尽きた…`);
@@ -1020,23 +1224,62 @@ canvas.addEventListener("touchend",e=>{
   if(t.clientY<UI_H){
     handleUIZoneDrop(t);
   } else {
-    // 村人を敵にドロップ → 戦闘開始判定
-    // ドロップ先がhostileカードか確認
-    if(!isDragGroup && def(dragging.type).attr==="human"){
-      const wpos=touchW(t);
-      const mobCard=cards.find(c=>
-        c!==dragging &&
-        def(c.type).attr==="hostile" &&
-        wpos.x>=c.x && wpos.x<=c.x+c.w &&
-        wpos.y>=c.y && wpos.y<=c.y+c.h
-      );
-      if(mobCard){
-        const humanCard=dragging;
+    const dragDef=def(dragging.type);
+
+    // ── ニンジン→ウサギ：手なずけ判定 ──
+    if(!isDragGroup && dragging.type==="carrot"){
+      const target=cards.find(c=>c!==dragging&&overlap(dragging,c)&&c.type==="rabbit");
+      if(target){
+        if(Math.random()<0.5){
+          // 成功：友好モブに変化
+          target.type="tamed_rabbit";
+          delete target.hp;
+          toast("うさぎを手なずけた！");
+        } else {
+          toast("失敗…うさぎに逃げられた！");
+        }
+        // ニンジンを消費
+        cards=cards.filter(c=>c!==dragging);
         dragging=null; isDragGroup=false; groupCards=[]; groupOffsets=[];
-        startBattle(humanCard, mobCard);
         return;
       }
     }
+
+    // ── 戦闘判定：human→hostile または hostile→human ──
+    if(!isDragGroup){
+      const isHuman=dragDef.attr==="human";
+      const isHostile=dragDef.attr==="hostile";
+
+      if(isHuman || isHostile){
+        // ドラッグ中カードと矩形が重なっている相手カードを探す
+        const partner=cards.find(c=>{
+          if(c===dragging) return false;
+          if(!overlap(dragging,c)) return false;
+          const cd=def(c.type);
+          return isHuman ? cd.attr==="hostile" : cd.attr==="human";
+        });
+        if(partner){
+          const humanCard=isHuman?dragging:partner;
+          const mobCard  =isHuman?partner:dragging;
+          dragging=null; isDragGroup=false; groupCards=[]; groupOffsets=[];
+          startBattle(humanCard,mobCard);
+          return;
+        }
+      }
+
+      // 敵カードは人間以外とは重ねられない → 重なった場合は弾く
+      if(isHostile){
+        const bad=cards.find(c=>c!==dragging&&overlap(dragging,c)&&def(c.type).attr!=="human");
+        if(bad){
+          // 元の位置には戻せないので近くの空き地に移動
+          const p=findFreePos(dragging.x,dragging.y);
+          dragging.x=p.x; dragging.y=p.y;
+          dragging=null; isDragGroup=false; groupCards=[]; groupOffsets=[];
+          return;
+        }
+      }
+    }
+
     // 通常のスタック補正・クラフト開始
     snapStack(dragging);
     tryStartCraft(dragging);
@@ -1080,21 +1323,33 @@ function handleUIZoneDrop(t){
     }
   }
   if(isDragGroup) dragging=null;
-  if(total>0){ addEmeralds(total,sx,sy); toast(`売却: 💎×${total}`); }
+  if(total>0){ addEmeralds(total,sx,sy); toast(`売却: 💎×${total}`); completeQuest("q4"); updateSellBanner(); }
 }
 
 // ── スタック位置補正 ──────────────────────────
 function snapStack(dropped){
-  // ドロップ後の現在位置で connected を取得
-  // ただしグループドラッグ中は groupCards 全体が動いているので
-  // dropped と重なっている「groupCards以外」のカードを探す
   const movingIds = isDragGroup ? new Set(groupCards.map(c=>c.id)) : new Set([dropped.id]);
-
-  // dropped が重なっている外部カード（移動していないカード）を探す
   const externalOverlap = cards.filter(c=>!movingIds.has(c.id) && overlap(dropped, c));
-  if(externalOverlap.length===0) return; // 何とも重なっていない → 補正不要
+  if(externalOverlap.length===0) return;
 
-  // 外部カードから連結グループを構築（移動カードを除外）
+  // ── 重ねガード ──────────────────────────────
+  // 1) 敵カードには（戦闘開始以外で）何も重ねられない
+  if(externalOverlap.some(c=>def(c.type).attr==="hostile")){
+    const p=findFreePos(dropped.x,dropped.y);
+    dropped.x=p.x; dropped.y=p.y;
+    return;
+  }
+  // 2) 敵カード自身は人間以外とは重ねられない
+  const dragCards=isDragGroup?groupCards:[dropped];
+  if(dragCards.some(c=>def(c.type).attr==="hostile")){
+    if(externalOverlap.some(c=>def(c.type).attr!=="human")){
+      const p=findFreePos(dropped.x,dropped.y);
+      dropped.x=p.x; dropped.y=p.y;
+      return;
+    }
+  }
+
+  // 外部カードから連結グループを構築
   const vis=new Set(movingIds);
   const stackBase=[];
   const queue=[externalOverlap[0]];
@@ -1106,20 +1361,17 @@ function snapStack(dropped){
   }
   if(stackBase.length===0) return;
 
-  // 既存スタックのX基準（Y最小のカード）とY最大
   stackBase.sort((a,b)=>a.y-b.y);
   const baseX = stackBase[0].x;
   const maxY  = Math.max(...stackBase.map(c=>c.y));
 
   if(isDragGroup){
-    // グループ全体を既存スタックのX・Y最下段の24px下から積み上げ
     const sorted=[...groupCards].sort((a,b)=>a.y-b.y);
     sorted.forEach((c,i)=>{
       const p=viewClamp(baseX, maxY+24+i*24);
       c.x=p.x; c.y=p.y;
     });
   } else {
-    // 単体：既存スタック最下段の24px下
     const p=viewClamp(baseX, maxY+24);
     dropped.x=p.x; dropped.y=p.y;
   }
@@ -1140,10 +1392,15 @@ function tryStartCraft(dropped){
 // ════════════════════════════════════════════════
 function update(dt){
   if(mealPhase||gameOver||packOpen||battleActive) return;
+  updateCardCount();
+  if(sellPhase){ updateSellBanner(); return; } // 売却フェーズ中は時間・クラフト停止
+
+  const eff=dt*gameSpeed;
+  if(eff<=0) return;
 
   // 日時タイマー（初期パック開封後のみ）
   if(dayStarted){
-    dayTimer+=dt;
+    dayTimer+=eff;
     const ratio=Math.min(dayTimer/DAY_MS,1);
     document.getElementById("dayBar").style.width=(ratio*100)+"%";
     document.getElementById("dayLabel").textContent=`${dayCount}日目`;
@@ -1170,10 +1427,8 @@ function update(dt){
     if(isDragGroup && dragGroupIdSet.size>0){
       const allInDrag = [...craftIds].every(id=>dragGroupIdSet.has(id));
       if(allInDrag){
-        // ドラッグ中のグループ自体がクラフト中 → 進捗を進めながら維持
-        const npDrag = info.progress + dt;
+        const npDrag = info.progress + eff;
         if(npDrag >= info.recipe.time*1000){
-          // 移動中に完成した場合もここで処理
           newPM[key]={progress:info.recipe.time*1000, recipe:info.recipe};
         } else {
           newPM[key]={progress:npDrag, recipe:info.recipe};
@@ -1189,7 +1444,7 @@ function update(dt){
     if(!recipe) continue;
     if(RECIPES.indexOf(recipe)!==RECIPES.indexOf(info.recipe)) continue;
 
-    const np=info.progress+dt;
+    const np=info.progress+eff;
     if(np>=recipe.time*1000){
       // ── 完成 ──
       const keepAttrs=recipe.keepAttrs||[];
@@ -1230,6 +1485,13 @@ function update(dt){
       const pos=findFreePos(baseX,baseY);
       const newCard=mkCard(outType,pos.x,pos.y);
 
+      // ── クエストトリガー（クラフト完了時） ──
+      if(outType==="wood")       completeQuest("q3");
+      if(outType==="stick")      completeQuest("q10");
+      if(outType==="apple_tree") completeQuest("q5");
+      if(outType==="flour"||outType==="carrot") completeQuest("q6");
+      if(outType==="baby")       completeQuest("q9");
+
       // 近くに同種カードがあれば自動グループ化（同種のみのグループに限定）
       const SNAP_DIST=250;
       const sameType=cards.filter(c=>c.id!==newCard.id&&c.type===outType);
@@ -1266,19 +1528,18 @@ function update(dt){
       }
 
       // 資源が残っている場合 → 自動再開
-      if(autoRestart.length>0){
+      // また、全カードがkeepされた（消費なし）場合も自動再開（耕地+ニンジン等）
+      const shouldAutoRestart = autoRestart.length>0 || toRemove.length===0;
+      if(shouldAutoRestart){
         setTimeout(()=>{
-          // 現在も盤面に残っているkeepカードを確認
           const survivors=toKeep.filter(c=>cards.includes(c));
           if(survivors.length===0) return;
-          // スタック形式で再整列（横揃え・縦24pxずつ）
           const sortedS=[...survivors].sort((a,b)=>a.y-b.y);
           const refX=sortedS[0].x, refY=sortedS[0].y;
           sortedS.forEach((c,i)=>{
             const p=worldClamp(refX, refY+i*24);
             c.x=p.x; c.y=p.y;
           });
-          // 再グループ化してクラフト開始
           const newGrp=connected(survivors[0]);
           const newRecipe=matchRecipe(newGrp);
           if(newRecipe){
@@ -1313,14 +1574,14 @@ function drawCard(c,craftProg,craftTotal){
   ctx.fillStyle=as.hd; ctx.fill();
 
   ctx.fillStyle=as.light?"#eee":"#fff";
-  ctx.font="bold 11px Georgia"; ctx.textAlign="center";
+  ctx.font="bold 11px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif"; ctx.textAlign="center";
   ctx.fillText(d.label,x+CW/2,y+16);
 
   // 属性バッジ
   ctx.fillStyle="rgba(0,0,0,.2)";
   ctx.beginPath(); ctx.roundRect(x+3,y+27,30,13,3); ctx.fill();
   ctx.fillStyle=as.light?"#ddd":"#fff";
-  ctx.font="8px Georgia"; ctx.textAlign="center";
+  ctx.font="8px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif"; ctx.textAlign="center";
   ctx.fillText(as.label,x+18,y+37);
 
   // 売却値
@@ -1328,7 +1589,7 @@ function drawCard(c,craftProg,craftTotal){
     ctx.fillStyle="rgba(0,0,0,.18)";
     ctx.beginPath(); ctx.roundRect(x+CW-34,y+27,31,13,3); ctx.fill();
     ctx.fillStyle=as.light?"#dde":"#fff";
-    ctx.font="9px Georgia"; ctx.textAlign="center";
+    ctx.font="9px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif"; ctx.textAlign="center";
     ctx.fillText("💎"+d.sell,x+CW-18,y+37);
   }
 
@@ -1342,7 +1603,7 @@ function drawCard(c,craftProg,craftTotal){
     ctx.fillStyle=ratio>0.5?"#4caf50":ratio>0.25?"#ff9800":"#f44336";
     ctx.beginPath(); ctx.roundRect(bx,by,bw*ratio,bh,3); ctx.fill();
     ctx.fillStyle=as.light?"#ddd":"#333";
-    ctx.font="8px Georgia"; ctx.textAlign="center";
+    ctx.font="8px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif"; ctx.textAlign="center";
     ctx.fillText(`HP ${hp}/${d.maxHp}`,x+CW/2,by+5);
   }
 
@@ -1350,7 +1611,7 @@ function drawCard(c,craftProg,craftTotal){
   if(d.attr==="food"&&d.satiety!==null){
     ctx.fillStyle="rgba(255,255,255,.2)";
     ctx.beginPath(); ctx.roundRect(x+3,y+43,CW-6,14,3); ctx.fill();
-    ctx.fillStyle="#fff"; ctx.font="bold 10px Georgia"; ctx.textAlign="center";
+    ctx.fillStyle="#fff"; ctx.font="bold 10px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif"; ctx.textAlign="center";
     const dispSat = c.partialSatiety!==undefined
       ? (c.stack>1 ? `満腹度 ${(c.stack-1)*d.satiety}+${c.partialSatiety}` : `満腹度 ${c.partialSatiety}`)
       : `満腹度 ${d.satiety}`;
@@ -1373,7 +1634,7 @@ function drawCard(c,craftProg,craftTotal){
   if(c.stack>1){
     ctx.fillStyle="rgba(0,0,0,.6)";
     ctx.beginPath(); ctx.roundRect(x+CW-28,y+CH-22,25,18,4); ctx.fill();
-    ctx.fillStyle="#fff"; ctx.font="bold 11px Georgia"; ctx.textAlign="center";
+    ctx.fillStyle="#fff"; ctx.font="bold 11px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif"; ctx.textAlign="center";
     ctx.fillText("×"+c.stack,x+CW-15,y+CH-9);
   }
 
