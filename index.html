@@ -50,6 +50,18 @@ canvas { display:block; }
 #packShopA.active { background:rgba(232,184,75,.35); border-color:#e8b84b; }
 #packShopB { color:#a0d0ff; background:rgba(80,160,255,.1); border:1px dashed rgba(80,160,255,.4); }
 #packShopB.active { background:rgba(80,160,255,.3); border-color:#60b0ff; }
+/* 解放パック（章クリア後） */
+.pack-shop-zone.locked {
+  opacity:.35; pointer-events:none; filter:grayscale(1);
+}
+.pack-shop-zone.unlocked-new {
+  animation:pack-unlock .6s ease;
+}
+@keyframes pack-unlock {
+  0%   { transform:scale(1); }
+  40%  { transform:scale(1.18); }
+  100% { transform:scale(1); }
+}
 
 /* 日数バー */
 #dayBarWrap {
@@ -413,6 +425,7 @@ const DEFS = {
   tamed_rabbit:{ label:"うさぎ",    attr:"friendly", sell:2,    maxUses:null },
   warehouse:   { label:"倉庫",      attr:"building", sell:3,    maxUses:null, cardSlots:4 },
   recipe_card: { label:"レシピ",    attr:"recipe",   sell:1,    maxUses:null },
+  bone:        { label:"骨",        attr:"material", sell:2,    maxUses:null },
 };
 function def(type){ return DEFS[type]||{label:type,attr:"material",sell:1,maxUses:null}; }
 
@@ -443,13 +456,27 @@ function pickOut(r){ const tot=r.variants.reduce((s,v)=>s+v.w,0); let x=Math.ran
 // ── パックプール ──────────────────────────────
 const PACK_A=[{type:"tree",w:12},{type:"rock",w:12},{type:"apple_tree",w:7},{type:"wood",w:16},{type:"stone",w:16},{type:"dirt",w:5},{type:"apple",w:5},{type:"flint",w:12},{type:"human",w:3},{type:"rabbit",w:8},{type:"seed",w:2},{type:"carrot",w:2}];
 const PACK_B=[{type:"dirt",w:40},{type:"apple_tree",w:30},{type:"seed",w:30}];
-function drawPool(pool,n){
+
+// パックごとに排出するレシピカードを制御
+// RECIPES配列のインデックスを指定。nullなら全hasCard:trueレシピが対象
+const PACK_A_RECIPES = null; // 例: [0,1,2,5,7,9,10,13,15,16,17,18] で特定レシピのみ
+const PACK_B_RECIPES = null; // 例: [10,11,12,13,14,15] で農業系のみ
+
+// 現在のパックで排出可能なレシピかチェック
+let _currentPackRecipeFilter = null; // drawPool呼び出し時にセット
+
+function drawPool(pool, n, recipeFilter=null){
   return Array.from({length:n},()=>{
-    // 村人が盤面に2人以上いる場合はhumanを除外
+    // 村人が盤面に1人以下の場合のみhuman排出
     const humanCount=cards.filter(c=>c.type==="human"||c.type==="baby").length;
     let filtered=humanCount>=2 ? pool.filter(p=>p.type!=="human") : pool;
-    // 未所持レシピがある場合のみ __recipe__ エントリを追加
-    const hasUnownedRecipe=RECIPES.some((r,i)=>r.hasCard&&!ownedRecipes.has(i));
+
+    // 未所持かつこのパックで排出可能なレシピがあれば __recipe__ を追加
+    const hasUnownedRecipe=RECIPES.some((r,i)=>{
+      if(!r.hasCard||ownedRecipes.has(i)) return false;
+      if(recipeFilter===null) return true; // フィルタなし＝全対象
+      return recipeFilter.includes(i);
+    });
     if(hasUnownedRecipe&&!filtered.some(p=>p.type==="__recipe__")){
       filtered=[...filtered,{type:"__recipe__",w:5}];
     }
@@ -458,6 +485,19 @@ function drawPool(pool,n){
     for(const p of filtered){r-=p.w;if(r<=0)return p.type;}
     return filtered[0].type;
   });
+}
+
+// レシピカード枠を解決（パックのrecipeFilterを考慮）
+function resolveRecipeFromPool(recipeFilter=null){
+  const available=RECIPES
+    .map((r,i)=>({r,i}))
+    .filter(({r,i})=>{
+      if(!r.hasCard||ownedRecipes.has(i)) return false;
+      if(recipeFilter===null) return true;
+      return recipeFilter.includes(i);
+    });
+  if(available.length===0) return null;
+  return available[Math.floor(Math.random()*available.length)].i;
 }
 
 // ════════════════════════════════════════════════
@@ -473,7 +513,7 @@ let progressMap={};
 let dragging=null, dragOffX=0, dragOffY=0;
 let isDragGroup=false, groupCards=[], groupOffsets=[];
 let lastTime=0;
-let initPackOpened=false, pendingPackTypes=[];
+let initPackOpened=false, pendingPackTypes=[], pendingPackRecipeFilter=null;
 let packOpen=false;
 let battleActive=false;
 let gameOver=false;
@@ -540,8 +580,9 @@ document.getElementById("initPackCard").addEventListener("click",()=>{
   completeQuest("q1");
 });
 
-function openPackOverlay(types){
+function openPackOverlay(types, recipeFilter=null){
   pendingPackTypes=types;
+  pendingPackRecipeFilter=recipeFilter;
   packOpen=true;
   const cont=document.getElementById("packCards");
   cont.innerHTML="";
@@ -573,7 +614,7 @@ document.getElementById("packCloseBtn").addEventListener("click",()=>{
     const p=findFreePos(sx+i*sp,wc.y-40);
     if(type==="__recipe__"){
       // レシピカードとして配置
-      const idx=resolveRecipeFromPool();
+      const idx=resolveRecipeFromPool(pendingPackRecipeFilter);
       if(idx!==null){
         gainRecipeCard(idx,p.x,p.y);
       }
@@ -768,10 +809,15 @@ document.getElementById("mealConfirmBtn").addEventListener("click",()=>{
   }
   mealSelectedIds.clear();
 
-  // 村人をdead人削除
+  // 村人をdead人削除（骨ドロップあり）
   let killed=dead;
   for(let i=cards.length-1;i>=0&&killed>0;i--){
-    if(cards[i].type==="human"||cards[i].type==="baby"){ cards.splice(i,1); killed--; }
+    if(cards[i].type==="human"||cards[i].type==="baby"){
+      const dc=cards[i];
+      cards.splice(i,1);
+      dropBone(dc.x,dc.y);
+      killed--;
+    }
   }
 
   document.getElementById("mealOverlay").classList.remove("show");
@@ -836,17 +882,65 @@ function setSpeed(s){
 
 // ── クエストシステム ──────────────────────────
 const QUESTS=[
-  { id:"q1",  text:"冒険の始まりパックを開封しよう",     done:false, visible:true,  deps:[]     },
-  { id:"q2",  text:"食料を確保し、一日目を生き延びよう", done:false, visible:false, deps:["q1"] },
-  { id:"q3",  text:"木を伐採して木材を入手しよう",       done:false, visible:false, deps:["q1"] },
-  { id:"q4",  text:"カードを売却してエメラルドを入手しよう",done:false,visible:false,deps:["q1"] },
-  { id:"q5",  text:"土からリンゴの木を育てよう",         done:false, visible:false, deps:["q1"] },
-  { id:"q6",  text:"耕地で作物を育てよう",               done:false, visible:false, deps:["q5"] },
-  { id:"q7",  text:"戦闘に勝利しよう",                   done:false, visible:false, deps:["q1"] },
-  { id:"q8",  text:"ウサギを手なずけよう",               done:false, visible:false, deps:["q1"] },
-  { id:"q9",  text:"村人を増やそう（赤ちゃんを入手）",   done:false, visible:false, deps:["q1"] },
-  { id:"q10", text:"木材を加工して木の棒を入手しよう",   done:false, visible:false, deps:["q3"] },
+  { id:"q1",  text:"冒険の始まりパックを開封しよう",         done:false, visible:true,  deps:[]     },
+  { id:"q2",  text:"食料を確保し、一日目を生き延びよう",     done:false, visible:false, deps:["q1"] },
+  { id:"q3",  text:"木を伐採して木材を入手しよう",           done:false, visible:false, deps:["q1"] },
+  { id:"q10", text:"木材を加工して木の棒を入手しよう",       done:false, visible:false, deps:["q3"] },
+  { id:"q4",  text:"カードを売却してエメラルドを入手しよう", done:false, visible:false, deps:["q1"] },
+  { id:"q5",  text:"土からリンゴの木を育てよう",             done:false, visible:false, deps:["q1"] },
+  { id:"q6",  text:"耕地で作物を育てよう",                   done:false, visible:false, deps:["q5"] },
+  { id:"q7",  text:"戦闘に勝利しよう",                       done:false, visible:false, deps:["q1"] },
+  { id:"q8",  text:"ウサギを手なずけよう",                   done:false, visible:false, deps:["q1"] },
+  { id:"q9",  text:"村人を増やそう（赤ちゃんを入手）",       done:false, visible:false, deps:["q1"] },
 ];
+
+// ── クエスト章・パック解放 ────────────────────
+// 各章：chapterのクエストを全達成すると unlocksPackIds のパックが解放される
+const QUEST_CHAPTERS = [
+  {
+    id: "ch1",
+    quests: ["q1","q2","q3","q10","q4","q5","q6","q7","q8","q9"],
+    unlocksPackIds: ["packShopB"],
+  },
+  // 将来の章はここに追加
+  // { id:"ch2", quests:["q11","q12"], unlocksPackIds:["packShopC"] },
+];
+
+// 初期状態：packShopBはロック
+const INITIALLY_LOCKED_PACKS = new Set(["packShopB"]);
+let unlockedPacks = new Set(["packShopA"]);
+
+function initPackLocks(){
+  for(const id of INITIALLY_LOCKED_PACKS){
+    const el=document.getElementById(id);
+    if(el) el.classList.add("locked");
+  }
+}
+initPackLocks(); // 定義直後に呼び出し
+
+function checkChapterComplete(){
+  for(const ch of QUEST_CHAPTERS){
+    if(ch.unlocksPackIds.every(id=>unlockedPacks.has(id))) continue;
+    const allDone=ch.quests.every(qid=>{
+      const q=QUESTS.find(x=>x.id===qid);
+      return q&&q.done;
+    });
+    if(allDone){
+      for(const packId of ch.unlocksPackIds){
+        if(!unlockedPacks.has(packId)){
+          unlockedPacks.add(packId);
+          const el=document.getElementById(packId);
+          if(el){
+            el.classList.remove("locked");
+            el.classList.add("unlocked-new");
+            setTimeout(()=>el.classList.remove("unlocked-new"),800);
+          }
+          toast("🎉 新しいパックが解放されました！");
+        }
+      }
+    }
+  }
+}
 
 // ── レシピカードシステム ──────────────────────
 // 入手済みレシピインデックスのSet（RECIPESの配列インデックス）
@@ -932,33 +1026,40 @@ function buildPackPoolWithRecipes(basePool){
   return [...basePool,{type:"__recipe__",w:5}];
 }
 
-// パック開封時にレシピカード枠を実際のレシピに変換
-function resolveRecipeFromPool(){
-  const available=RECIPES
-    .map((r,i)=>({r,i}))
-    .filter(({r,i})=>r.hasCard&&!ownedRecipes.has(i));
-  if(available.length===0) return null;
-  const pick=available[Math.floor(Math.random()*available.length)];
-  return pick.i;
-}
 function completeQuest(id){
   const q=QUESTS.find(x=>x.id===id);
   if(!q||q.done) return;
   q.done=true;
   toast(`クエスト達成：${q.text}`);
-  // 依存するクエストを出現させる
   QUESTS.forEach(x=>{ if(x.deps.includes(id)) x.visible=true; });
+  checkChapterComplete();
   renderQuestList();
 }
 
 function renderQuestList(){
   const list=document.getElementById("questList");
   list.innerHTML="";
-  QUESTS.filter(q=>q.visible).forEach(q=>{
-    const el=document.createElement("div");
-    el.className="quest-item"+(q.done?" done":"");
-    el.innerHTML=`<span class="quest-check q-check">${q.done?"✅":"◻"}</span><span>${q.text}</span>`;
-    list.appendChild(el);
+
+  QUEST_CHAPTERS.forEach((ch,ci)=>{
+    const chQuests=ch.quests.map(qid=>QUESTS.find(x=>x.id===qid)).filter(Boolean);
+    const visible=chQuests.filter(q=>q.visible);
+    if(visible.length===0) return;
+
+    // 章ヘッダー
+    const done=chQuests.filter(q=>q.done).length;
+    const total=chQuests.length;
+    const allUnlocked=ch.unlocksPackIds.every(id=>unlockedPacks.has(id));
+    const hdr=document.createElement("div");
+    hdr.style.cssText="margin:6px 0 4px;font-size:10px;font-weight:bold;color:#e8b84b;border-bottom:1px solid rgba(232,184,75,.3);padding-bottom:3px;";
+    hdr.textContent=`第${ci+1}章　${done}/${total}　${allUnlocked?"✅ パック解放済み":""}`;
+    list.appendChild(hdr);
+
+    visible.forEach(q=>{
+      const el=document.createElement("div");
+      el.className="quest-item"+(q.done?" done":"");
+      el.innerHTML=`<span class="quest-check q-check">${q.done?"✅":"◻"}</span><span>${q.text}</span>`;
+      list.appendChild(el);
+    });
   });
 }
 
@@ -970,6 +1071,14 @@ document.getElementById("questBtn").addEventListener("click",()=>{
 document.getElementById("questCloseBtn").addEventListener("click",()=>{
   document.getElementById("questPanel").classList.remove("show");
 });
+
+// 村人死亡時に50%で骨をドロップ
+function dropBone(x, y){
+  if(Math.random()<0.5){
+    const p=findFreePos(x,y);
+    mkCard("bone",p.x,p.y);
+  }
+}
 
 function triggerGameOver(){
   gameOver=true;
@@ -1110,6 +1219,7 @@ function endBattle(humanCard, mobCard, won){
     completeQuest("q7");
   } else {
     cards=cards.filter(c=>c!==humanCard);
+    dropBone(humanCard.x, humanCard.y);
     toast(`${def(humanCard.type).label}は力尽きた…`);
     const left=cards.filter(c=>c.type==="human"||c.type==="baby").length;
     if(left===0) triggerGameOver();
@@ -1465,12 +1575,15 @@ function handleUIZoneDrop(t){
   if(dragging.type==="emerald"){
     const rB=document.getElementById("packShopB").getBoundingClientRect();
     const isPackB=(t.clientX>=rB.left&&t.clientX<=rB.right);
+    const packId=isPackB?"packShopB":"packShopA";
+    if(!unlockedPacks.has(packId)){ toast("このパックはまだ解放されていません"); return; }
     const pool=isPackB?PACK_B:PACK_A;
+    const recipeFilter=isPackB?PACK_B_RECIPES:PACK_A_RECIPES;
     const cost=isPackB?4:3;
     if(dragging.stack>=cost){
       dragging.stack-=cost;
       if(dragging.stack<=0) cards=cards.filter(c=>c!==dragging);
-      openPackOverlay(drawPool(pool,3));
+      openPackOverlay(drawPool(pool,3,recipeFilter),recipeFilter);
       toast("パックを購入しました！");
     } else { toast(`💎が${cost}個必要です`); }
     return;
