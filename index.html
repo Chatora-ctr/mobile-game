@@ -65,7 +65,7 @@ canvas { display:block; }
 
 /* 初期パック */
 #initPackCard {
-  position:fixed; bottom:70px; right:16px;
+  position:fixed; bottom:80px; right:16px;
   width:86px; height:108px;
   background:linear-gradient(135deg,#2a2a4a,#1a1a3a);
   border:2px solid #e8b84b; border-radius:10px;
@@ -199,6 +199,32 @@ canvas { display:block; }
 .speed-btn.active { background:rgba(232,184,75,.6); border-color:#e8b84b; }
 
 /* クエストパネル */
+/* レシピパネル */
+#recipeBtn {
+  position:fixed; bottom:16px; right:72px;
+  width:48px; height:48px; border-radius:24px;
+  background:rgba(20,20,40,.88); border:2px solid #6a9aff;
+  color:#6a9aff; font-size:18px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  z-index:20; user-select:none;
+}
+#recipePanel {
+  display:none; position:fixed; right:0; top:60px;
+  width:260px; max-width:90vw; height:calc(100vh - 60px);
+  background:rgba(16,16,32,.95); border-left:2px solid #6a9aff;
+  z-index:25; overflow-y:auto; padding:12px;
+  flex-direction:column; gap:6px;
+}
+#recipePanel.show { display:flex; }
+#recipePanel h3 { color:#6a9aff; font-size:14px; margin-bottom:6px; }
+.recipe-item {
+  padding:7px 8px; border-radius:6px;
+  background:rgba(255,255,255,.05);
+  font-size:11px; color:#ccc; line-height:1.5;
+}
+.recipe-item .ri-title { font-weight:bold; color:#aac4ff; margin-bottom:2px; }
+.recipe-item .ri-arrow { color:#888; }
+
 #questBtn {
   position:fixed; bottom:16px; right:16px;
   width:48px; height:48px; border-radius:24px;
@@ -302,6 +328,15 @@ canvas { display:block; }
   <div class="speed-btn" id="btn3x" title="3倍速">×3</div>
 </div>
 
+<div id="recipeBtn" title="入手済みレシピ">📖</div>
+<div id="recipePanel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+    <h3 style="color:#6a9aff;font-size:14px;">📖 入手済みレシピ</h3>
+    <button id="recipeCloseBtn" style="background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;line-height:1;">×</button>
+  </div>
+  <div id="recipeList"></div>
+</div>
+
 <div id="questBtn" title="クエスト">📋</div>
 <div id="questPanel">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
@@ -344,6 +379,7 @@ const ATTR_STYLE = {
   food:     { hd:"#8a3030", bg:"#c86060", label:"食べ物", light:false },
   hostile:  { hd:"#6a1a1a", bg:"#aa3a3a", label:"敵",     light:true  },
   friendly: { hd:"#2a5a2a", bg:"#5a9a5a", label:"友好",   light:false },
+  recipe:   { hd:"#3a3a6a", bg:"#6a6aaa", label:"レシピ", light:true  },
 };
 function attrSt(attr){ return ATTR_STYLE[attr]||{hd:"#888",bg:"#bbb",label:attr,light:false}; }
 
@@ -376,30 +412,31 @@ const DEFS = {
                 drop:[{type:"raw_meat",w:85},{type:"carrot",w:15}] },
   tamed_rabbit:{ label:"うさぎ",    attr:"friendly", sell:2,    maxUses:null },
   warehouse:   { label:"倉庫",      attr:"building", sell:3,    maxUses:null, cardSlots:4 },
+  recipe_card: { label:"レシピ",    attr:"recipe",   sell:1,    maxUses:null },
 };
 function def(type){ return DEFS[type]||{label:type,attr:"material",sell:1,maxUses:null}; }
 
 // ── レシピ ────────────────────────────────────
 const RECIPES = [
-  { inputs:{human:1,tree:1},         variants:[{out:"wood", w:85},{out:"stick",w:10},{out:"apple",w:5}],time:10,  keepAttrs:["human"] },
-  { inputs:{human:1,rock:1},         variants:[{out:"stone",w:80},{out:"flint",w:20}], time:10,  keepAttrs:["human"] },
-  { inputs:{human:1,wood:2,stone:2}, variants:[{out:"house",w:100}],                   time:30,  keepAttrs:["human"] },
-  { inputs:{human:1,wood:1},         variants:[{out:"stick",w:100}],                   time:10,  keepAttrs:["human"] },
-  { inputs:{flint:1,stick:1},        variants:[{out:"bonfire",w:100}],                 time:20,  keepAttrs:[] },
-  { inputs:{human:2,house:1},        variants:[{out:"baby", w:100}],                   time:30,  keepAttrs:["human","building"] },
-  { inputs:{baby:1,house:1},         variants:[{out:"human",w:100}],                   time:60,  keepAttrs:["building"] },
-  { inputs:{wood:2,stick:1},         variants:[{out:"hoe",  w:100}],                   time:5,   keepAttrs:[] },
-  { inputs:{human:1,apple_tree:1},   variants:[{out:"apple",w:100}],                   time:10,  keepAttrs:["human"] },
-  { inputs:{dirt:1,hoe:1,human:1},   variants:[{out:"soil", w:100}],                   time:10,  keepAttrs:["human"] },
-  { inputs:{dirt:1,apple:1},         variants:[{out:"apple_tree",w:100}],              time:90,  keepAttrs:[] },
-  { inputs:{soil:1,carrot:1},        variants:[{out:"carrot",w:100}],                  time:90,  keepAttrs:["building","food"] },
-  { inputs:{farm:1,carrot:1},        variants:[{out:"carrot",w:100}],                  time:45,  keepAttrs:["building","food"] },
-  { inputs:{soil:1,seed:1},          variants:[{out:"flour",w:100}],                   time:20,  keepAttrs:["building"] },
-  { inputs:{farm:1,seed:1},          variants:[{out:"flour",w:100}],                   time:10,  keepAttrs:["building"] },
-  { inputs:{flour:2},                variants:[{out:"bread",w:100}],                   time:10,  keepAttrs:[] },
-  { inputs:{bonfire:1,raw_meat:1},   variants:[{out:"grilled_meat",w:100}],            time:50,  keepAttrs:["building"] },
-  { inputs:{dirt:2,soil:1,stone:1,human:1},variants:[{out:"farm", w:100}],             time:30,  keepAttrs:["human"] },
-  { inputs:{human:1,wood:1,stone:1,stick:1},variants:[{out:"warehouse",w:100}],        time:40,  keepAttrs:["human"] },
+  { inputs:{human:1,tree:1},         variants:[{out:"wood", w:85},{out:"stick",w:10},{out:"apple",w:5}],time:10,  keepAttrs:["human"],             hasCard:true  },
+  { inputs:{human:1,rock:1},         variants:[{out:"stone",w:80},{out:"flint",w:20}], time:10,  keepAttrs:["human"],             hasCard:true  },
+  { inputs:{human:1,wood:2,stone:2}, variants:[{out:"house",w:100}],                   time:30,  keepAttrs:["human"],             hasCard:true  },
+  { inputs:{human:1,wood:1},         variants:[{out:"stick",w:100}],                   time:10,  keepAttrs:["human"],             hasCard:false },
+  { inputs:{flint:1,stick:1},        variants:[{out:"bonfire",w:100}],                 time:20,  keepAttrs:[],                    hasCard:true  },
+  { inputs:{human:2,house:1},        variants:[{out:"baby", w:100}],                   time:30,  keepAttrs:["human","building"],  hasCard:true  },
+  { inputs:{baby:1,house:1},         variants:[{out:"human",w:100}],                   time:60,  keepAttrs:["building"],          hasCard:false },
+  { inputs:{wood:2,stick:1},         variants:[{out:"hoe",  w:100}],                   time:5,   keepAttrs:[],                    hasCard:true  },
+  { inputs:{human:1,apple_tree:1},   variants:[{out:"apple",w:100}],                   time:10,  keepAttrs:["human"],             hasCard:false },
+  { inputs:{dirt:1,hoe:1,human:1},   variants:[{out:"soil", w:100}],                   time:10,  keepAttrs:["human"],             hasCard:true  },
+  { inputs:{dirt:1,apple:1},         variants:[{out:"apple_tree",w:100}],              time:90,  keepAttrs:[],                    hasCard:true  },
+  { inputs:{soil:1,carrot:1},        variants:[{out:"carrot",w:100}],                  time:90,  keepAttrs:["building","food"],   hasCard:true  },
+  { inputs:{farm:1,carrot:1},        variants:[{out:"carrot",w:100}],                  time:45,  keepAttrs:["building","food"],   hasCard:false },
+  { inputs:{soil:1,seed:1},          variants:[{out:"flour",w:100}],                   time:20,  keepAttrs:["building"],          hasCard:true  },
+  { inputs:{farm:1,seed:1},          variants:[{out:"flour",w:100}],                   time:10,  keepAttrs:["building"],          hasCard:false },
+  { inputs:{flour:2},                variants:[{out:"bread",w:100}],                   time:10,  keepAttrs:[],                    hasCard:true  },
+  { inputs:{bonfire:1,raw_meat:1},   variants:[{out:"grilled_meat",w:100}],            time:50,  keepAttrs:["building"],          hasCard:true  },
+  { inputs:{dirt:2,soil:1,stone:1,human:1},variants:[{out:"farm", w:100}],             time:30,  keepAttrs:["human"],             hasCard:true  },
+  { inputs:{human:1,wood:1,stone:1,stick:1},variants:[{out:"warehouse",w:100}],        time:40,  keepAttrs:["human"],             hasCard:true  },
 ];
 function pickOut(r){ const tot=r.variants.reduce((s,v)=>s+v.w,0); let x=Math.random()*tot; for(const v of r.variants){x-=v.w;if(x<=0)return v.out;} return r.variants[0].out; }
 
@@ -407,8 +444,20 @@ function pickOut(r){ const tot=r.variants.reduce((s,v)=>s+v.w,0); let x=Math.ran
 const PACK_A=[{type:"tree",w:12},{type:"rock",w:12},{type:"apple_tree",w:7},{type:"wood",w:16},{type:"stone",w:16},{type:"dirt",w:5},{type:"apple",w:5},{type:"flint",w:12},{type:"human",w:3},{type:"rabbit",w:8},{type:"seed",w:2},{type:"carrot",w:2}];
 const PACK_B=[{type:"dirt",w:40},{type:"apple_tree",w:30},{type:"seed",w:30}];
 function drawPool(pool,n){
-  const tot=pool.reduce((s,p)=>s+p.w,0);
-  return Array.from({length:n},()=>{ let r=Math.random()*tot; for(const p of pool){r-=p.w;if(r<=0)return p.type;} return pool[0].type; });
+  return Array.from({length:n},()=>{
+    // 村人が盤面に2人以上いる場合はhumanを除外
+    const humanCount=cards.filter(c=>c.type==="human"||c.type==="baby").length;
+    let filtered=humanCount>=2 ? pool.filter(p=>p.type!=="human") : pool;
+    // 未所持レシピがある場合のみ __recipe__ エントリを追加
+    const hasUnownedRecipe=RECIPES.some((r,i)=>r.hasCard&&!ownedRecipes.has(i));
+    if(hasUnownedRecipe&&!filtered.some(p=>p.type==="__recipe__")){
+      filtered=[...filtered,{type:"__recipe__",w:5}];
+    }
+    const ftot=filtered.reduce((s,p)=>s+p.w,0);
+    let r=Math.random()*ftot;
+    for(const p of filtered){r-=p.w;if(r<=0)return p.type;}
+    return filtered[0].type;
+  });
 }
 
 // ════════════════════════════════════════════════
@@ -497,11 +546,18 @@ function openPackOverlay(types){
   const cont=document.getElementById("packCards");
   cont.innerHTML="";
   types.forEach((type,i)=>{
-    const d=def(type),as=attrSt(d.attr);
     const el=document.createElement("div");
     el.className="pack-card-preview";
-    el.innerHTML=`<div class="pch" style="background:${as.hd};color:${as.light?"#ddd":"#fff"}">${d.label}</div>
-                  <div class="pcb" style="background:${as.bg};color:${as.light?"#ddd":"#333"}">${d.label}</div>`;
+    if(type==="__recipe__"){
+      // レシピカードのプレビュー
+      const as=attrSt("recipe");
+      el.innerHTML=`<div class="pch" style="background:${as.hd};color:#ddd">レシピ</div>
+                    <div class="pcb" style="background:${as.bg};color:#ddd;font-size:10px;">📖 レシピ</div>`;
+    } else {
+      const d=def(type),as=attrSt(d.attr);
+      el.innerHTML=`<div class="pch" style="background:${as.hd};color:${as.light?"#ddd":"#fff"}">${d.label}</div>
+                    <div class="pcb" style="background:${as.bg};color:${as.light?"#ddd":"#333"}">${d.label}</div>`;
+    }
     cont.appendChild(el);
     setTimeout(()=>el.classList.add("pop"),80+i*120);
   });
@@ -515,10 +571,17 @@ document.getElementById("packCloseBtn").addEventListener("click",()=>{
   const sp=110, sx=wc.x-((pendingPackTypes.length-1)*sp)/2;
   pendingPackTypes.forEach((type,i)=>{
     const p=findFreePos(sx+i*sp,wc.y-40);
-    mkCard(type,p.x,p.y);
+    if(type==="__recipe__"){
+      // レシピカードとして配置
+      const idx=resolveRecipeFromPool();
+      if(idx!==null){
+        gainRecipeCard(idx,p.x,p.y);
+      }
+    } else {
+      mkCard(type,p.x,p.y);
+    }
   });
   pendingPackTypes=[];
-  // 初期パックの盤面追加後に日数スタート
   if(!dayStarted){
     dayStarted=true;
     document.getElementById("dayLabel").textContent="1日目";
@@ -778,13 +841,106 @@ const QUESTS=[
   { id:"q3",  text:"木を伐採して木材を入手しよう",       done:false, visible:false, deps:["q1"] },
   { id:"q4",  text:"カードを売却してエメラルドを入手しよう",done:false,visible:false,deps:["q1"] },
   { id:"q5",  text:"土からリンゴの木を育てよう",         done:false, visible:false, deps:["q1"] },
-  { id:"q6",  text:"耕地で作物を育てよう",               done:false, visible:false, deps:["q1"] },
+  { id:"q6",  text:"耕地で作物を育てよう",               done:false, visible:false, deps:["q5"] },
   { id:"q7",  text:"戦闘に勝利しよう",                   done:false, visible:false, deps:["q1"] },
   { id:"q8",  text:"ウサギを手なずけよう",               done:false, visible:false, deps:["q1"] },
   { id:"q9",  text:"村人を増やそう（赤ちゃんを入手）",   done:false, visible:false, deps:["q1"] },
   { id:"q10", text:"木材を加工して木の棒を入手しよう",   done:false, visible:false, deps:["q3"] },
 ];
 
+// ── レシピカードシステム ──────────────────────
+// 入手済みレシピインデックスのSet（RECIPESの配列インデックス）
+let ownedRecipes=new Set();
+
+// レシピカードのIDを生成（recipe_R{index}）
+function recipeCardId(recipeIdx){ return `recipe_${recipeIdx}`; }
+
+// レシピカードを入手する（重複なし）
+function gainRecipeCard(recipeIdx, x, y){
+  if(ownedRecipes.has(recipeIdx)) return; // 既に所持
+  ownedRecipes.add(recipeIdx);
+  const c=mkCard("recipe_card",x,y);
+  c.recipeIdx=recipeIdx; // どのレシピか記録
+  renderRecipeList();
+}
+
+// レシピタブの表示更新
+function renderRecipeList(){
+  const list=document.getElementById("recipeList");
+  list.innerHTML="";
+  if(ownedRecipes.size===0){
+    list.innerHTML=`<div style="color:#666;font-size:12px;">まだレシピを入手していません。<br>パックから入手できます。</div>`;
+    return;
+  }
+
+  // 属性ごとにグループ化
+  const groups={}; // attr → [{idx, r}]
+  for(const idx of [...ownedRecipes].sort((a,b)=>a-b)){
+    const r=RECIPES[idx];
+    if(!r) continue;
+    const outAttr=def(r.variants[0].out).attr||"material";
+    if(!groups[outAttr]) groups[outAttr]=[];
+    groups[outAttr].push({idx,r});
+  }
+
+  // 属性の表示順
+  const attrOrder=["human","building","tool","material","food","resource","currency","hostile","friendly","recipe"];
+  const sortedAttrs=[...new Set([...attrOrder.filter(a=>groups[a]),...Object.keys(groups)])];
+
+  for(const attr of sortedAttrs){
+    if(!groups[attr]) continue;
+    const as=attrSt(attr);
+
+    // セクションヘッダー
+    const hdr=document.createElement("div");
+    hdr.style.cssText=`margin:8px 0 4px;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:bold;color:#fff;background:${as.hd};`;
+    hdr.textContent=as.label;
+    list.appendChild(hdr);
+
+    // 各レシピ
+    for(const {idx,r} of groups[attr]){
+      const inputs=Object.entries(r.inputs).map(([k,v])=>`${def(k).label}×${v}`).join(" + ");
+      const outs=r.variants.map(v=>def(v.out).label).join("/");
+      const el=document.createElement("div");
+      el.className="recipe-item";
+      el.innerHTML=`<div class="ri-title">${outs}</div>
+                    <div class="ri-arrow">${inputs}</div>`;
+      list.appendChild(el);
+    }
+  }
+}
+
+document.getElementById("recipeBtn").addEventListener("click",()=>{
+  const p=document.getElementById("recipePanel");
+  // クエストパネルと共存しないよう閉じる
+  document.getElementById("questPanel").classList.remove("show");
+  p.classList.toggle("show");
+  renderRecipeList();
+});
+document.getElementById("recipeCloseBtn").addEventListener("click",()=>{
+  document.getElementById("recipePanel").classList.remove("show");
+});
+
+// パックプールにレシピカードを動的追加する関数
+function buildPackPoolWithRecipes(basePool){
+  // hasCard:true のレシピで未所持のものをレシピカードとして追加
+  const recipeEntries=RECIPES
+    .map((r,i)=>({r,i}))
+    .filter(({r,i})=>r.hasCard&&!ownedRecipes.has(i));
+  if(recipeEntries.length===0) return basePool;
+  // 合計weight算出してレシピカードを1エントリとして追加（weight=5）
+  return [...basePool,{type:"__recipe__",w:5}];
+}
+
+// パック開封時にレシピカード枠を実際のレシピに変換
+function resolveRecipeFromPool(){
+  const available=RECIPES
+    .map((r,i)=>({r,i}))
+    .filter(({r,i})=>r.hasCard&&!ownedRecipes.has(i));
+  if(available.length===0) return null;
+  const pick=available[Math.floor(Math.random()*available.length)];
+  return pick.i;
+}
 function completeQuest(id){
   const q=QUESTS.find(x=>x.id===id);
   if(!q||q.done) return;
@@ -1226,20 +1382,26 @@ canvas.addEventListener("touchend",e=>{
   } else {
     const dragDef=def(dragging.type);
 
-    // ── ニンジン→ウサギ：手なずけ判定 ──
-    if(!isDragGroup && dragging.type==="carrot"){
-      const target=cards.find(c=>c!==dragging&&overlap(dragging,c)&&c.type==="rabbit");
-      if(target){
+    // ── ニンジン+ウサギ：手なずけ判定（双方向） ──
+    if(!isDragGroup){
+      let carrotCard=null, rabbitCard=null;
+      if(dragging.type==="carrot"){
+        rabbitCard=cards.find(c=>c!==dragging&&overlap(dragging,c)&&c.type==="rabbit");
+        carrotCard=dragging;
+      } else if(dragging.type==="rabbit"){
+        carrotCard=cards.find(c=>c!==dragging&&overlap(dragging,c)&&c.type==="carrot");
+        rabbitCard=dragging;
+      }
+      if(carrotCard&&rabbitCard){
         if(Math.random()<0.5){
-          // 成功：友好モブに変化
-          target.type="tamed_rabbit";
-          delete target.hp;
+          rabbitCard.type="tamed_rabbit";
+          delete rabbitCard.hp;
           toast("うさぎを手なずけた！");
+          completeQuest("q8");
         } else {
-          toast("失敗…うさぎに逃げられた！");
+          toast("失敗…ウサギに逃げられた！");
         }
-        // ニンジンを消費
-        cards=cards.filter(c=>c!==dragging);
+        cards=cards.filter(c=>c!==carrotCard);
         dragging=null; isDragGroup=false; groupCards=[]; groupOffsets=[];
         return;
       }
@@ -1487,7 +1649,7 @@ function update(dt){
 
       // ── クエストトリガー（クラフト完了時） ──
       if(outType==="wood")       completeQuest("q3");
-      if(outType==="stick")      completeQuest("q10");
+      if(outType==="stick"&&recipe.inputs.wood) completeQuest("q10"); // 木材→木の棒のみ
       if(outType==="apple_tree") completeQuest("q5");
       if(outType==="flour"||outType==="carrot") completeQuest("q6");
       if(outType==="baby")       completeQuest("q9");
@@ -1567,6 +1729,64 @@ function drawCard(c,craftProg,craftTotal){
   ctx.save();
   if(isDrag){ ctx.shadowColor="rgba(0,0,0,.45)"; ctx.shadowBlur=14; ctx.shadowOffsetY=5; }
 
+  // ══ レシピカード専用描画 ══
+  if(d.attr==="recipe"){
+    const r=c.recipeIdx!==undefined?RECIPES[c.recipeIdx]:null;
+    const outLabel=r?def(r.variants[0].out).label:"レシピ";
+    const as2=attrSt("recipe");
+    const r2=8;
+
+    // カード背景
+    ctx.beginPath(); ctx.roundRect(x,y,CW,CH,r2);
+    ctx.fillStyle=as2.bg; ctx.fill();
+
+    // ヘッダー（生成物名）
+    ctx.beginPath(); ctx.roundRect(x,y,CW,24,[r2,r2,0,0]);
+    ctx.fillStyle=as2.hd; ctx.fill();
+    ctx.fillStyle="#dde";
+    ctx.font="bold 10px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif";
+    ctx.textAlign="center";
+    ctx.fillText(outLabel,x+CW/2,y+16);
+
+    // 属性バッジ
+    ctx.fillStyle="rgba(0,0,0,.2)";
+    ctx.beginPath(); ctx.roundRect(x+3,y+27,30,13,3); ctx.fill();
+    ctx.fillStyle="#ddd";
+    ctx.font="8px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif";
+    ctx.textAlign="center";
+    ctx.fillText("レシピ",x+18,y+37);
+
+    // 売却値
+    ctx.fillStyle="rgba(0,0,0,.18)";
+    ctx.beginPath(); ctx.roundRect(x+CW-34,y+27,31,13,3); ctx.fill();
+    ctx.fillStyle="#dde";
+    ctx.font="9px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif";
+    ctx.textAlign="center";
+    ctx.fillText("💎1",x+CW-18,y+37);
+
+    // 素材リスト（改行）
+    if(r){
+      const inputLines=Object.entries(r.inputs).map(([k,v])=>`${def(k).label} ×${v}`);
+      ctx.fillStyle="rgba(255,255,255,.12)";
+      ctx.beginPath(); ctx.roundRect(x+3,y+43,CW-6,CH-47,3); ctx.fill();
+      ctx.fillStyle="#cce";
+      ctx.font="8px 'Hiragino Maru Gothic ProN','BIZ UDPGothic',sans-serif";
+      ctx.textAlign="center";
+      inputLines.forEach((line,idx)=>{
+        ctx.fillText(line,x+CW/2,y+54+idx*11);
+      });
+    }
+
+    // ドラッグ枠
+    if(isDrag){
+      ctx.strokeStyle="#e8b84b"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.roundRect(x,y,CW,CH,r2); ctx.stroke();
+    }
+    ctx.restore();
+    return; // 通常描画をスキップ
+  }
+
+  // 通常カード描画
   ctx.beginPath(); ctx.roundRect(x,y,CW,CH,r);
   ctx.fillStyle=as.bg; ctx.fill();
 
