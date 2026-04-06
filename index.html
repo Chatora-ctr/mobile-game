@@ -416,7 +416,7 @@ const DEFS = {
   hoe:        { label:"くわ",       attr:"tool",     sell:2,    maxUses:3    },
   emerald:    { label:"エメラルド", attr:"currency", sell:null, maxUses:null },
   apple:      { label:"リンゴ",     attr:"food",     sell:1,    maxUses:null, satiety:1 },
-  carrot:     { label:"ニンジン",   attr:"food",     sell:2,    maxUses:null, satiety:1 },
+  carrot:     { label:"ニンジン",   attr:"food",     sell:1,    maxUses:null, satiety:1 },
   raw_meat:   { label:"生肉",       attr:"food",     sell:3,    maxUses:null, satiety:0 },
   grilled_meat:{label:"焼いた肉",   attr:"food",     sell:3,    maxUses:null, satiety:3 },
   bread:      { label:"パン",       attr:"food",     sell:3,    maxUses:null, satiety:5 },
@@ -426,18 +426,20 @@ const DEFS = {
   warehouse:   { label:"倉庫",      attr:"building", sell:3,    maxUses:null, cardSlots:4 },
   recipe_card: { label:"レシピ",    attr:"recipe",   sell:1,    maxUses:null },
   bone:        { label:"骨",        attr:"material", sell:2,    maxUses:null },
+  plantation:  { label:"植林場",    attr:"building", sell:4,    maxUses:null },
+  quarry:      { label:"採石場",    attr:"building", sell:4,    maxUses:null },
 };
 function def(type){ return DEFS[type]||{label:type,attr:"material",sell:1,maxUses:null}; }
 
 // ── レシピ ────────────────────────────────────
 const RECIPES = [
-  { inputs:{human:1,tree:1},         variants:[{out:"wood", w:85},{out:"stick",w:10},{out:"apple",w:5}],time:10,  keepAttrs:["human"],             hasCard:true  },
-  { inputs:{human:1,rock:1},         variants:[{out:"stone",w:80},{out:"flint",w:20}], time:10,  keepAttrs:["human"],             hasCard:true  },
+  { inputs:{human:1,tree:1},         variants:[{out:"wood", w:85},{out:"stick",w:10},{out:"apple",w:5}],time:10,  keepAttrs:["human"],             hasCard:false  },
+  { inputs:{human:1,rock:1},         variants:[{out:"stone",w:80},{out:"flint",w:20}], time:10,  keepAttrs:["human"],             hasCard:false  },
   { inputs:{human:1,wood:2,stone:2}, variants:[{out:"house",w:100}],                   time:30,  keepAttrs:["human"],             hasCard:true  },
   { inputs:{human:1,wood:1},         variants:[{out:"stick",w:100}],                   time:10,  keepAttrs:["human"],             hasCard:false },
   { inputs:{flint:1,stick:1},        variants:[{out:"bonfire",w:100}],                 time:20,  keepAttrs:[],                    hasCard:true  },
   { inputs:{human:2,house:1},        variants:[{out:"baby", w:100}],                   time:30,  keepAttrs:["human","building"],  hasCard:true  },
-  { inputs:{baby:1,house:1},         variants:[{out:"human",w:100}],                   time:60,  keepAttrs:["building"],          hasCard:false },
+  { inputs:{baby:1,house:1},         variants:[{out:"human",w:100}],                   time:60,  keepAttrs:["building"],          hasCard:true  },
   { inputs:{wood:2,stick:1},         variants:[{out:"hoe",  w:100}],                   time:5,   keepAttrs:[],                    hasCard:true  },
   { inputs:{human:1,apple_tree:1},   variants:[{out:"apple",w:100}],                   time:10,  keepAttrs:["human"],             hasCard:false },
   { inputs:{dirt:1,hoe:1,human:1},   variants:[{out:"soil", w:100}],                   time:10,  keepAttrs:["human"],             hasCard:true  },
@@ -447,14 +449,18 @@ const RECIPES = [
   { inputs:{soil:1,seed:1},          variants:[{out:"flour",w:100}],                   time:20,  keepAttrs:["building"],          hasCard:true  },
   { inputs:{farm:1,seed:1},          variants:[{out:"flour",w:100}],                   time:10,  keepAttrs:["building"],          hasCard:false },
   { inputs:{flour:2},                variants:[{out:"bread",w:100}],                   time:10,  keepAttrs:[],                    hasCard:true  },
-  { inputs:{bonfire:1,raw_meat:1},   variants:[{out:"grilled_meat",w:100}],            time:50,  keepAttrs:["building"],          hasCard:true  },
+  { inputs:{bonfire:1,raw_meat:1},   variants:[{out:"grilled_meat",w:100}],            time:50,  keepAttrs:["building"],          hasCard:false },
   { inputs:{dirt:2,soil:1,stone:1,human:1},variants:[{out:"farm", w:100}],             time:30,  keepAttrs:["human"],             hasCard:true  },
   { inputs:{human:1,wood:1,stone:1,stick:1},variants:[{out:"warehouse",w:100}],        time:40,  keepAttrs:["human"],             hasCard:true  },
+  { inputs:{human:1,wood:3,stone:1}, variants:[{out:"plantation",w:100}],              time:40,  keepAttrs:["human"],             hasCard:true  },
+  { inputs:{human:1,wood:1,stone:3}, variants:[{out:"quarry",w:100}],                  time:40,  keepAttrs:["human"],             hasCard:true  },
+  { inputs:{human:1,plantation:1},   variants:[{out:"wood", w:85},{out:"stick",w:10},{out:"apple",w:5}],time:15,  keepAttrs:["human","building"],             hasCard:false  },
+  { inputs:{human:1,quarry:1},       variants:[{out:"stone",w:80},{out:"flint",w:20}], time:15,  keepAttrs:["human","building"],  hasCard:false  },
 ];
 function pickOut(r){ const tot=r.variants.reduce((s,v)=>s+v.w,0); let x=Math.random()*tot; for(const v of r.variants){x-=v.w;if(x<=0)return v.out;} return r.variants[0].out; }
 
 // ── パックプール ──────────────────────────────
-const PACK_A=[{type:"tree",w:12},{type:"rock",w:12},{type:"apple_tree",w:7},{type:"wood",w:16},{type:"stone",w:16},{type:"dirt",w:5},{type:"apple",w:5},{type:"flint",w:12},{type:"human",w:3},{type:"rabbit",w:8},{type:"seed",w:2},{type:"carrot",w:2}];
+const PACK_A=[{type:"tree",w:12},{type:"rock",w:12},{type:"apple_tree",w:6},{type:"wood",w:16},{type:"stone",w:16},{type:"dirt",w:7},{type:"apple",w:5},{type:"flint",w:5},{type:"stick",w:6},{type:"human",w:3},{type:"rabbit",w:8},{type:"seed",w:2},{type:"carrot",w:2}];
 const PACK_B=[{type:"dirt",w:40},{type:"apple_tree",w:30},{type:"seed",w:30}];
 
 // パックごとに排出するレシピカードを制御
@@ -478,7 +484,7 @@ function drawPool(pool, n, recipeFilter=null){
       return recipeFilter.includes(i);
     });
     if(hasUnownedRecipe&&!filtered.some(p=>p.type==="__recipe__")){
-      filtered=[...filtered,{type:"__recipe__",w:5}];
+      filtered=[...filtered,{type:"__recipe__",w:10}];
     }
     const ftot=filtered.reduce((s,p)=>s+p.w,0);
     let r=Math.random()*ftot;
@@ -887,11 +893,11 @@ const QUESTS=[
   { id:"q3",  text:"木を伐採して木材を入手しよう",           done:false, visible:false, deps:["q1"] },
   { id:"q10", text:"木材を加工して木の棒を入手しよう",       done:false, visible:false, deps:["q3"] },
   { id:"q4",  text:"カードを売却してエメラルドを入手しよう", done:false, visible:false, deps:["q1"] },
-  { id:"q5",  text:"土からリンゴの木を育てよう",             done:false, visible:false, deps:["q1"] },
+  { id:"q5",  text:"土からリンゴの木を育てよう",             done:false, visible:false, deps:["q4"] },
   { id:"q6",  text:"耕地で作物を育てよう",                   done:false, visible:false, deps:["q5"] },
-  { id:"q7",  text:"戦闘に勝利しよう",                       done:false, visible:false, deps:["q1"] },
-  { id:"q8",  text:"ウサギを手なずけよう",                   done:false, visible:false, deps:["q1"] },
-  { id:"q9",  text:"村人を増やそう（赤ちゃんを入手）",       done:false, visible:false, deps:["q1"] },
+  { id:"q7",  text:"戦闘に勝利しよう",                       done:false, visible:false, deps:["q4"] },
+  { id:"q8",  text:"ウサギを手なずけよう",                   done:false, visible:false, deps:["q7"] },
+  { id:"q9",  text:"村人を増やそう（赤ちゃんを入手）",       done:false, visible:false, deps:["q4"] },
 ];
 
 // ── クエスト章・パック解放 ────────────────────
