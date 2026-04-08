@@ -282,7 +282,7 @@ canvas { display:block; }
       <span class="ps-name">冒険パック</span><span class="ps-cost"><span class="emoji">💎</span><span class="ps-num">×3</span></span>
     </div>
     <div class="pack-shop-zone" id="packShopB">
-      <span class="ps-name">農業パック</span><span class="ps-cost"><span class="emoji">💎</span><span class="ps-num">×4</span></span>
+      <span class="ps-name" id="packShopB-name">農業パック</span><span class="ps-cost" id="packShopB-cost"><span class="emoji">💎</span><span class="ps-num">×4</span></span>
     </div>
   </div>
   <div id="cardCount" style="color:#ccc;font-size:11px;white-space:nowrap;flex-shrink:0;">0/20</div>
@@ -388,9 +388,9 @@ const ATTR_STYLE = {
   building: { hd:"#6a5030", bg:"#a08060", label:"施設",   light:false },
   currency: { hd:"#2a6050", bg:"#4a9880", label:"通貨",   light:true  },
   tool:     { hd:"#5a3070", bg:"#9060a8", label:"道具",   light:true  },
-  food:     { hd:"#8a3030", bg:"#c86060", label:"食べ物", light:false },
-  hostile:  { hd:"#6a1a1a", bg:"#aa3a3a", label:"敵",     light:true  },
-  friendly: { hd:"#2a5a2a", bg:"#5a9a5a", label:"友好",   light:false },
+  food:     { hd:"#a06000", bg:"#e09030", label:"食べ物", light:false },  // 茶〜橙：敵の赤と区別
+  hostile:  { hd:"#7a1020", bg:"#c02840", label:"敵",     light:true  },  // より鮮やかな赤紫
+  friendly: { hd:"#1a6070", bg:"#3aaabb", label:"友好",   light:false },  // 青緑：資源の緑と区別
   recipe:   { hd:"#3a3a6a", bg:"#6a6aaa", label:"レシピ", light:true  },
 };
 function attrSt(attr){ return ATTR_STYLE[attr]||{hd:"#888",bg:"#bbb",label:attr,light:false}; }
@@ -472,15 +472,17 @@ const PACK_B_RECIPES = null; // 例: [10,11,12,13,14,15] で農業系のみ
 let _currentPackRecipeFilter = null; // drawPool呼び出し時にセット
 
 function drawPool(pool, n, recipeFilter=null){
+  let humanDrawnThisPack=false; // 同一パックで村人を複数排出しない
   return Array.from({length:n},()=>{
-    // 村人が盤面に1人以下の場合のみhuman排出
     const humanCount=cards.filter(c=>c.type==="human"||c.type==="baby").length;
-    let filtered=humanCount>=2 ? pool.filter(p=>p.type!=="human") : pool;
+    // 村人が2人以上いる、またはこのパックで既に村人を引いた場合は除外
+    let filtered=(humanCount>=2||humanDrawnThisPack)
+      ? pool.filter(p=>p.type!=="human")
+      : pool;
 
-    // 未所持かつこのパックで排出可能なレシピがあれば __recipe__ を追加
     const hasUnownedRecipe=RECIPES.some((r,i)=>{
       if(!r.hasCard||ownedRecipes.has(i)) return false;
-      if(recipeFilter===null) return true; // フィルタなし＝全対象
+      if(recipeFilter===null) return true;
       return recipeFilter.includes(i);
     });
     if(hasUnownedRecipe&&!filtered.some(p=>p.type==="__recipe__")){
@@ -488,8 +490,10 @@ function drawPool(pool, n, recipeFilter=null){
     }
     const ftot=filtered.reduce((s,p)=>s+p.w,0);
     let r=Math.random()*ftot;
-    for(const p of filtered){r-=p.w;if(r<=0)return p.type;}
-    return filtered[0].type;
+    let result=filtered[0].type;
+    for(const p of filtered){r-=p.w;if(r<=0){result=p.type;break;}}
+    if(result==="human") humanDrawnThisPack=true;
+    return result;
   });
 }
 
@@ -615,17 +619,41 @@ document.getElementById("packCloseBtn").addEventListener("click",()=>{
   document.getElementById("packOverlay").classList.remove("show");
   packOpen=false;
   const wc=s2w(canvas.width/2,canvas.height/2);
-  const sp=110, sx=wc.x-((pendingPackTypes.length-1)*sp)/2;
-  pendingPackTypes.forEach((type,i)=>{
-    const p=findFreePos(sx+i*sp,wc.y-40);
+  const packCenterX=wc.x, packCenterY=wc.y;
+
+  // 配置済み予定位置を追跡（重なり防止）
+  const placed=[]; // {x,y,w:CW,h:CH}
+
+  function findFreePosAvoid(bx,by){
+    const angles=[0,Math.PI/2,Math.PI,3*Math.PI/2,Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
+    for(const d of [120,160,200,260,320,400]){
+      for(const a of angles){
+        const p=worldClamp(bx+Math.cos(a)*d, by+Math.sin(a)*d);
+        const cand={x:p.x,y:p.y,w:CW,h:CH};
+        const noOverlapCards=cards.every(c=>!overlap(c,cand));
+        const noOverlapPlaced=placed.every(pp=>!overlap(pp,cand));
+        if(noOverlapCards&&noOverlapPlaced) return p;
+      }
+    }
+    return worldClamp(bx+140,by);
+  }
+
+  pendingPackTypes.forEach((type)=>{
+    const p=findFreePosAvoid(packCenterX, packCenterY);
+    placed.push({x:p.x,y:p.y,w:CW,h:CH});
     if(type==="__recipe__"){
-      // レシピカードとして配置
       const idx=resolveRecipeFromPool(pendingPackRecipeFilter);
       if(idx!==null){
         gainRecipeCard(idx,p.x,p.y);
+        const newC=cards[cards.length-1];
+        if(newC&&newC.type==="recipe_card"){
+          animations.push({id:newC.id, fromX:packCenterX, fromY:packCenterY,
+            toX:p.x, toY:p.y, t:0, dur:500, onComplete:null});
+          newC.x=packCenterX; newC.y=packCenterY;
+        }
       }
     } else {
-      mkCard(type,p.x,p.y);
+      spawnCardAnimated(type, packCenterX, packCenterY, p.x, p.y);
     }
   });
   pendingPackTypes=[];
@@ -781,6 +809,13 @@ document.getElementById("mealConfirmBtn").addEventListener("click",()=>{
   const fed=Math.floor(sat/2);
   const dead=Math.max(0,needed-fed);
 
+  // 食料があるのに必要量を満たさない場合は確認
+  const foodCards=cards.filter(c=>def(c.type).attr==="food");
+  const totalAvailSat=foodCards.reduce((s,c)=>s+cardActualSat(c),0);
+  if(dead>0 && totalAvailSat>=needed*2){
+    if(!confirm(`食料は足りているのに${dead}人の村人が死亡します。\nこのまま確定しますか？`)) return;
+  }
+
   // 選択した食べ物カードを満腹度単位で消費し、余剰はカードに残す
   let satNeeded = needed * 2; // 必要総満腹度
   for(const id of mealSelectedIds){
@@ -919,10 +954,17 @@ let unlockedPacks = new Set(["packShopA"]);
 function initPackLocks(){
   for(const id of INITIALLY_LOCKED_PACKS){
     const el=document.getElementById(id);
-    if(el) el.classList.add("locked");
+    if(el){
+      el.classList.add("locked");
+      // 名前と価格を ??? に隠す
+      const nameEl=document.getElementById(id+"-name");
+      const costEl=document.getElementById(id+"-cost");
+      if(nameEl){ nameEl.dataset.realName=nameEl.textContent; nameEl.textContent="???"; }
+      if(costEl){ costEl.dataset.realCost=costEl.innerHTML; costEl.innerHTML="???"; }
+    }
   }
 }
-initPackLocks(); // 定義直後に呼び出し
+initPackLocks();
 
 function checkChapterComplete(){
   for(const ch of QUEST_CHAPTERS){
@@ -940,6 +982,11 @@ function checkChapterComplete(){
             el.classList.remove("locked");
             el.classList.add("unlocked-new");
             setTimeout(()=>el.classList.remove("unlocked-new"),800);
+            // 名前と価格を復元
+            const nameEl=document.getElementById(packId+"-name");
+            const costEl=document.getElementById(packId+"-cost");
+            if(nameEl&&nameEl.dataset.realName) nameEl.textContent=nameEl.dataset.realName;
+            if(costEl&&costEl.dataset.realCost) costEl.innerHTML=costEl.dataset.realCost;
           }
           toast("🎉 新しいパックが解放されました！");
         }
@@ -1233,8 +1280,149 @@ function endBattle(humanCard, mobCard, won){
 }
 
 // ════════════════════════════════════════════════
-// ユーティリティ
+// カードアニメーション（飛び出し演出）
 // ════════════════════════════════════════════════
+// animations: [{card, startX, startY, targetX, targetY, t, duration}]
+let animations=[];
+
+function spawnCardAnimated(type, fromX, fromY, toX, toY, extra={}, onComplete=null){
+  const c=mkCard(type, fromX, fromY, extra);
+  c.x=fromX; c.y=fromY;
+  animations.push({id:c.id, fromX, fromY, toX, toY, t:0, dur:500, onComplete});
+  return c;
+}
+
+function updateAnimations(dt){
+  const done=[];
+  for(const a of animations){
+    a.t=Math.min(a.t+dt, a.dur);
+    const prog=easeOutCubic(a.t/a.dur);
+    const c=cards.find(x=>x.id===a.id);
+    if(c){
+      c.x=a.fromX+(a.toX-a.fromX)*prog;
+      c.y=a.fromY+(a.toY-a.fromY)*prog;
+    }
+    if(a.t>=a.dur){
+      // アニメーション完了：最終座標に確定してonCompleteを呼ぶ
+      if(c){ c.x=a.toX; c.y=a.toY; }
+      done.push(a);
+    }
+  }
+  animations=animations.filter(a=>!done.includes(a));
+  // done後にonCompleteを実行（アニメーション配列更新後に）
+  for(const a of done){
+    if(a.onComplete) setTimeout(a.onComplete, 0);
+  }
+}
+
+function isAnimating(cardId){
+  return animations.some(a=>a.id===cardId);
+}
+
+function easeOutCubic(t){ return 1-(1-t)**3; }
+
+// ════════════════════════════════════════════════
+// 斥力システム
+// ════════════════════════════════════════════════
+function applyRepulsion(){
+  const draggingIds=new Set();
+  if(dragging) draggingIds.add(dragging.id);
+  if(isDragGroup) groupCards.forEach(c=>draggingIds.add(c.id));
+
+  // アニメーション中カードの「目的地グループ」も固定（斥力で動かさない）
+  const animTargetIds=new Set();
+  for(const a of animations){
+    // toX/toY 付近にいるカードを目的地グループとして保護
+    for(const c of cards){
+      if(Math.abs(c.x-a.toX)<CW && Math.abs(c.y-a.toY)<CH){
+        const g=connected(c);
+        g.forEach(x=>animTargetIds.add(x.id));
+      }
+    }
+  }
+
+  const vis=new Set();
+  const groups=[];
+  for(const c of cards){
+    if(vis.has(c.id)) continue;
+    const grp=connected(c);
+    grp.forEach(x=>vis.add(x.id));
+    const hasDrag   = grp.some(c=>draggingIds.has(c.id));
+    const hasAnim   = grp.some(c=>isAnimating(c.id));
+    const isTarget  = grp.some(c=>animTargetIds.has(c.id));
+    groups.push({grp, hasDrag, hasAnim, isTarget});
+  }
+
+  function groupBBox(grp){
+    const minX=Math.min(...grp.map(c=>c.x));
+    const minY=Math.min(...grp.map(c=>c.y));
+    const maxX=Math.max(...grp.map(c=>c.x+CW));
+    const maxY=Math.max(...grp.map(c=>c.y+CH));
+    return {x:minX,y:minY,w:maxX-minX,h:maxY-minY,cx:(minX+maxX)/2,cy:(minY+maxY)/2};
+  }
+
+  // 離すべき最小ギャップ（BBox端から端まで）
+  const MARGIN=4;
+  const moves=new Map();
+
+  for(let i=0;i<groups.length;i++){
+    for(let j=i+1;j<groups.length;j++){
+      const gi=groups[i], gj=groups[j];
+      if(gi.hasDrag||gj.hasDrag) continue;   // ドラッグ中は除外
+
+      const bA=groupBBox(gi.grp);
+      const bB=groupBBox(gj.grp);
+
+      // BBox同士の実際のギャップ（負=重なり）
+      const gapX=Math.abs(bA.cx-bB.cx)-(bA.w+bB.w)/2;
+      const gapY=Math.abs(bA.cy-bB.cy)-(bA.h+bB.h)/2;
+
+      // どちらの方向も MARGIN 以上離れていれば完全に分離済み
+      if(gapX>=MARGIN || gapY>=MARGIN) continue;
+
+      // 押し出し方向（BBox中心間）
+      let dx=bB.cx-bA.cx;
+      let dy=bB.cy-bA.cy;
+      if(Math.abs(dx)<0.01&&Math.abs(dy)<0.01){ dx=1; dy=0; }
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      dx/=dist; dy/=dist;
+
+      // 重なり量：最も深い軸の重なり量を力に変換
+      // MARGIN まで離すために必要な移動量を基本力とする
+      const needX=Math.max(0, (bA.w+bB.w)/2+MARGIN-Math.abs(bA.cx-bB.cx));
+      const needY=Math.max(0, (bA.h+bB.h)/2+MARGIN-Math.abs(bA.cy-bB.cy));
+      // 実際に重なっている軸の必要量を使う（押し出し方向に合わせる）
+      const need=Math.abs(dx)*needX + Math.abs(dy)*needY;
+      // 1フレームで全部押し切る勢いで（ただし最大16px）
+      const force=Math.min(8, Math.max(4, need));
+
+      // アニメーション中のグループ・目的地グループは動かさない
+      const iCanMove=!gi.hasAnim && !gi.isTarget;
+      const jCanMove=!gj.hasAnim && !gj.isTarget;
+
+      // 両方動けるなら半分ずつ、片方固定なら全部もう片方が動く
+      const share = (iCanMove && jCanMove) ? 0.5 : 1.0;
+
+      if(iCanMove){
+        const m=moves.get(i)||{dx:0,dy:0};
+        m.dx-=dx*force*share; m.dy-=dy*force*share;
+        moves.set(i,m);
+      }
+      if(jCanMove){
+        const m=moves.get(j)||{dx:0,dy:0};
+        m.dx+=dx*force*share; m.dy+=dy*force*share;
+        moves.set(j,m);
+      }
+    }
+  }
+
+  for(const [gi,mv] of moves){
+    for(const c of groups[gi].grp){
+      c.x=Math.max(-CW*2, Math.min(WORLD_W+CW*2, c.x+mv.dx));
+      c.y=Math.max(-CH*2, Math.min(WORLD_H+CH*2, c.y+mv.dy));
+    }
+  }
+}
 function overlap(a,b){
   return !(a.x+a.w<=b.x||b.x+b.w<=a.x||a.y+a.h<=b.y||b.y+b.h<=a.y);
 }
@@ -1261,8 +1449,6 @@ function connected(start){
 
 // クラフト進行管理用：ドラッグ中カードを除外してグループ構築
 function allGroupsForCraft(){
-  // 単体ドラッグ：そのカードを除外
-  // グループドラッグ：グループ全カードを除外（通過してもクラフトリセットしない）
   let excludeIds;
   if(dragging && !isDragGroup){
     excludeIds = new Set([dragging.id]);
@@ -1271,6 +1457,8 @@ function allGroupsForCraft(){
   } else {
     excludeIds = new Set();
   }
+  // アニメーション中カードもクラフトグループから除外（通過でリセットしない）
+  animations.forEach(a=>excludeIds.add(a.id));
 
   const vis=new Set(), groups=[];
   for(const c of cards){
@@ -1344,9 +1532,12 @@ function findFreePos(bx,by){
 }
 
 function addEmeralds(n,sx,sy){
-  const p=viewClamp(sx||100,sy||100);
   const em=cards.find(c=>c.type==="emerald");
-  if(em){ em.stack+=n; } else { const c=mkCard("emerald",p.x,p.y); c.stack=n; }
+  if(em){ em.stack+=n; }
+  else {
+    const p=findFreePos(sx||INIT_WX, sy||INIT_WY);
+    const c=mkCard("emerald",p.x,p.y); c.stack=n;
+  }
 }
 
 let toastTmr=null;
@@ -1365,6 +1556,7 @@ function touchW(t){ return s2w(t.clientX, t.clientY-UI_H); }
 function hitCard(wx,wy){
   for(let i=cards.length-1;i>=0;i--){
     const c=cards[i];
+    if(isAnimating(c.id)) continue; // アニメーション中はドラッグ不可
     if(wx>=c.x&&wx<=c.x+c.w&&wy>=c.y&&wy<=c.y+c.h) return {card:c,idx:i};
   }
   return null;
@@ -1587,8 +1779,15 @@ function handleUIZoneDrop(t){
     const recipeFilter=isPackB?PACK_B_RECIPES:PACK_A_RECIPES;
     const cost=isPackB?4:3;
     if(dragging.stack>=cost){
+      const savedX=dragging.x, savedY=dragging.y;
       dragging.stack-=cost;
-      if(dragging.stack<=0) cards=cards.filter(c=>c!==dragging);
+      if(dragging.stack<=0){
+        cards=cards.filter(c=>c!==dragging);
+      } else {
+        // 残ったエメラルドを空き位置に移動
+        const p=findFreePos(savedX, savedY);
+        dragging.x=p.x; dragging.y=p.y;
+      }
       openPackOverlay(drawPool(pool,3,recipeFilter),recipeFilter);
       toast("パックを購入しました！");
     } else { toast(`💎が${cost}個必要です`); }
@@ -1674,7 +1873,9 @@ function tryStartCraft(dropped){
 function update(dt){
   if(mealPhase||gameOver||packOpen||battleActive) return;
   updateCardCount();
-  if(sellPhase){ updateSellBanner(); return; } // 売却フェーズ中は時間・クラフト停止
+  updateAnimations(dt); // アニメーション更新（常時）
+  applyRepulsion();     // 斥力（常時、ポーズ・売却中も動作）
+  if(sellPhase){ updateSellBanner(); return; }
 
   const eff=dt*gameSpeed;
   if(eff<=0) return;
@@ -1761,74 +1962,99 @@ function update(dt){
         c.x=p.x; c.y=p.y;
       });
 
-      // 出力カード生成
+      // 出力カード生成（生成元から飛び出す演出）
       const outType=pickOut(recipe);
-      const pos=findFreePos(baseX,baseY);
-      const newCard=mkCard(outType,pos.x,pos.y);
 
-      // ── クエストトリガー（クラフト完了時） ──
-      if(outType==="wood")       completeQuest("q3");
-      if(outType==="stick"&&recipe.inputs.wood) completeQuest("q10"); // 木材→木の棒のみ
-      if(outType==="apple_tree") completeQuest("q5");
-      if(outType==="flour"||outType==="carrot") completeQuest("q6");
-      if(outType==="baby")       completeQuest("q9");
-
-      // 近くに同種カードがあれば自動グループ化（同種のみのグループに限定）
+      // 同種カードが近くにあればそのスタック末尾を目的地にする
       const SNAP_DIST=250;
-      const sameType=cards.filter(c=>c.id!==newCard.id&&c.type===outType);
-      if(sameType.length>0){
-        // 最も近い同種カードを探す（全方向・そのグループが同種のみかチェック）
-        let nearest=null, nearestDist=Infinity;
+      let snapTarget=null;
+      {
+        const sameType=cards.filter(c=>c.type===outType);
+        let nearestDist=Infinity;
         for(const sc of sameType){
-          const cx=(sc.x+CW/2)-(newCard.x+CW/2);
-          const cy=(sc.y+CH/2)-(newCard.y+CH/2);
+          const cx=(sc.x+CW/2)-baseX;
+          const cy=(sc.y+CH/2)-baseY;
           const dist=Math.sqrt(cx*cx+cy*cy);
           if(dist<nearestDist){
             const grpCheck=connected(sc);
             const allSame=grpCheck.every(gc=>gc.type===outType);
-            if(allSame){ nearestDist=dist; nearest=sc; }
+            if(allSame){ nearestDist=dist; snapTarget=sc; }
           }
         }
-        if(nearest && nearestDist<SNAP_DIST){
-          // nearestのスタック末尾に積む
-          const grpN=connected(nearest);
-          grpN.sort((a,b)=>a.y-b.y);
-          const maxYN=Math.max(...grpN.map(c=>c.y));
-          const sp=worldClamp(grpN[0].x, maxYN+24);
-          newCard.x=sp.x; newCard.y=sp.y;
-          // グループ化後にレシピが成立すればクラフト開始
-          setTimeout(()=>{
-            const snapGrp=connected(newCard);
-            const snapRecipe=matchRecipe(snapGrp);
-            if(snapRecipe){
-              const sk=gKey(snapGrp);
-              if(!progressMap[sk]) progressMap[sk]={progress:0,recipe:snapRecipe};
-            }
-          }, 50);
-        }
+        if(nearestDist>=SNAP_DIST) snapTarget=null;
       }
 
-      // 資源が残っている場合 → 自動再開
-      // また、全カードがkeepされた（消費なし）場合も自動再開（耕地+ニンジン等）
-      const shouldAutoRestart = autoRestart.length>0 || toRemove.length===0;
-      if(shouldAutoRestart){
-        setTimeout(()=>{
-          const survivors=toKeep.filter(c=>cards.includes(c));
-          if(survivors.length===0) return;
-          const sortedS=[...survivors].sort((a,b)=>a.y-b.y);
-          const refX=sortedS[0].x, refY=sortedS[0].y;
-          sortedS.forEach((c,i)=>{
-            const p=worldClamp(refX, refY+i*24);
-            c.x=p.x; c.y=p.y;
-          });
-          const newGrp=connected(survivors[0]);
-          const newRecipe=matchRecipe(newGrp);
-          if(newRecipe){
-            const nk=gKey(newGrp);
-            if(!progressMap[nk]) progressMap[nk]={progress:0,recipe:newRecipe};
-          }
-        },80);
+      let toX, toY;
+      if(snapTarget){
+        const grpN=connected(snapTarget);
+        grpN.sort((a,b)=>a.y-b.y);
+        const maxYN=Math.max(...grpN.map(c=>c.y));
+        const sp=worldClamp(grpN[0].x, maxYN+24);
+        toX=sp.x; toY=sp.y;
+      } else {
+        const pos=findFreePos(baseX,baseY);
+        toX=pos.x; toY=pos.y;
       }
+
+      // アニメーション完了後の処理
+      const afterAnim=()=>{
+        const newCard=cards.find(c=>c._spawnId===spawnId);
+        if(!newCard) return;
+        delete newCard._spawnId;
+
+        // スナップ先が設定されていれば、完了時点の実際の座標に再配置（斥力でズレていてもOK）
+        if(snapTarget && cards.includes(snapTarget)){
+          const grpN=connected(snapTarget);
+          grpN.sort((a,b)=>a.y-b.y);
+          const maxYN=Math.max(...grpN.map(c=>c.y));
+          const sp=worldClamp(grpN[0].x, maxYN);
+          newCard.x=sp.x; newCard.y=sp.y;
+        }
+
+        // グループ化後にレシピが成立すればクラフト開始
+        setTimeout(()=>{
+          const snapGrp=connected(newCard);
+          const snapRecipe=matchRecipe(snapGrp);
+          if(snapRecipe){
+            const sk=gKey(snapGrp);
+            if(!progressMap[sk]) progressMap[sk]={progress:0,recipe:snapRecipe};
+          }
+        }, 50);
+
+        // 自動再開（資源残存 or 全keepレシピ）
+        if(shouldAutoRestart){
+          const survivors=toKeep.filter(c=>cards.includes(c));
+          if(survivors.length>0){
+            const sortedS=[...survivors].sort((a,b)=>a.y-b.y);
+            const refX=sortedS[0].x, refY=sortedS[0].y;
+            sortedS.forEach((c,i)=>{
+              const p=worldClamp(refX, refY+i*24);
+              c.x=p.x; c.y=p.y;
+            });
+            const newGrp=connected(survivors[0]);
+            const newRecipe=matchRecipe(newGrp);
+            if(newRecipe){
+              const nk=gKey(newGrp);
+              if(!progressMap[nk]) progressMap[nk]={progress:0,recipe:newRecipe};
+            }
+          }
+        }
+      };
+
+      // spawnIdで後からカードを特定できるようにする
+      const spawnId=nextId;
+      const newCard=spawnCardAnimated(outType, baseX, baseY, toX, toY, {}, afterAnim);
+      newCard._spawnId=spawnId;
+
+      // ── クエストトリガー（クラフト完了時） ──
+      if(outType==="wood")       completeQuest("q3");
+      if(outType==="stick"&&recipe.inputs.wood) completeQuest("q10");
+      if(outType==="apple_tree") completeQuest("q5");
+      if(outType==="flour"||outType==="carrot") completeQuest("q6");
+      if(outType==="baby")       completeQuest("q9");
+
+      // 資源が残っている場合 or 全keepレシピのフラグ（afterAnimで使用）
+      const shouldAutoRestart = autoRestart.length>0 || toRemove.length===0;
     } else {
       newPM[key]={progress:np,recipe};
     }
